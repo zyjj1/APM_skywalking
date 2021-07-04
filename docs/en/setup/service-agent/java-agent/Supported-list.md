@@ -36,7 +36,7 @@ metrics based on the tracing data.
   * Oracle Driver (Optional¹)
   * H2 Driver 1.3.x -> 1.4.x
   * [Sharding-JDBC](https://github.com/shardingjdbc/sharding-jdbc) 1.5.x
-  * [ShardingSphere](https://github.com/apache/shardingsphere) 3.0.0, 4.0.0-RC1, 4.0.0, 4.0.1, 4.1.0, 4.1.1
+  * [ShardingSphere](https://github.com/apache/shardingsphere) 3.0.0, 4.0.0-RC1, 4.0.0, 4.0.1, 4.1.0, 4.1.1, 5.0.0-beta
   * PostgreSQL Driver 8.x, 9.x, 42.x
   * Mariadb Driver 2.x, 1.8
   * [InfluxDB](https://github.com/influxdata/influxdb-java) 2.5 -> 2.17
@@ -85,6 +85,8 @@ metrics based on the tracing data.
     * [cassandra-java-driver](https://github.com/datastax/java-driver) 3.7.0-3.7.2
   * HBase
     * [hbase-client](https://github.com/apache/hbase) HTable 1.0.0-2.4.2
+  * Neo4j
+    * [Neo4j-java](https://neo4j.com/docs/java-manual/current) 4.x
 * Service Discovery
   * [Netflix Eureka](https://github.com/Netflix/eureka)
 * Distributed Coordination
@@ -94,6 +96,7 @@ metrics based on the tracing data.
   * Spring Core Async SuccessCallback/FailureCallback/ListenableFutureCallback 4.x
   * Spring Transaction 4.x and 5.x (Optional²)
 * [Hystrix: Latency and Fault Tolerance for Distributed Systems](https://github.com/Netflix/Hystrix) 1.4.20 -> 1.5.18
+* [Sentinel: The Sentinel of Your Microservices](https://github.com/alibaba/Sentinel) 1.7.0 -> 1.8.1
 * Scheduler
   * [Elastic Job](https://github.com/elasticjob/elastic-job) 2.x
   * [Apache ShardingSphere-Elasticjob](https://github.com/apache/shardingsphere-elasticjob) 3.0.0-alpha

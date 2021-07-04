@@ -63,7 +63,7 @@ public class JVMSourceDispatcher {
         this.sendToGCMetricProcess(
             service, serviceId, serviceInstance, serviceInstanceId, minuteTimeBucket, metrics.getGcList());
         this.sendToThreadMetricProcess(
-                service, serviceId, serviceInstance, serviceInstanceId, minuteTimeBucket, metrics.getThread());
+            service, serviceId, serviceInstance, serviceInstanceId, minuteTimeBucket, metrics.getThread());
     }
 
     private void sendToCpuMetricProcess(String service,
@@ -180,11 +180,11 @@ public class JVMSourceDispatcher {
     }
 
     private void sendToThreadMetricProcess(String service,
-            String serviceId,
-            String serviceInstance,
-            String serviceInstanceId,
-            long timeBucket,
-            Thread thread) {
+                                           String serviceId,
+                                           String serviceInstance,
+                                           String serviceInstanceId,
+                                           long timeBucket,
+                                           Thread thread) {
         ServiceInstanceJVMThread serviceInstanceJVMThread = new ServiceInstanceJVMThread();
         serviceInstanceJVMThread.setId(serviceInstanceId);
         serviceInstanceJVMThread.setName(serviceInstance);

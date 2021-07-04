@@ -46,13 +46,24 @@ public class CoreModuleConfig extends ModuleConfig {
     private String gRPCSslTrustedCAPath;
     private int maxConcurrentCallsPerConnection;
     private int maxMessageSize;
-    private boolean enableDatabaseSession;
     private int topNReportPeriod;
+    /**
+     * The period of L1 aggregation flush. Unit is ms.
+     */
+    private long l1FlushPeriod = 500;
+    /**
+     * Enable database flush session.
+     */
+    private boolean enableDatabaseSession;
+    /**
+     * The threshold of session time. Unit is ms. Default value is 70s.
+     */
+    private long storageSessionTimeout = 70_000;
     private final List<String> downsampling;
     /**
      * The period of doing data persistence. Unit is second.
      */
-
+    @Setter
     private long persistentPeriod = 3;
 
     private boolean enableDataKeeperExecutor = true;
@@ -151,12 +162,25 @@ public class CoreModuleConfig extends ModuleConfig {
     private int syncThreads = 2;
 
     /**
+     * The number of threads used to prepare metrics data to the storage.
+     *
+     * @since 8.7.0
+     */
+    @Setter
+    @Getter
+    private int prepareThreads = 2;
+
+    /**
      * The maximum number of processes supported for each synchronous storage operation. When the number of the flush
      * data is greater than this value, it will be assigned to multiple cores for execution.
      */
     @Getter
     @Setter
     private int maxSyncOperationNum = 50000;
+
+    @Getter
+    @Setter
+    private boolean enableEndpointNameGroupingByOpenapi = true;
 
     public CoreModuleConfig() {
         this.downsampling = new ArrayList<>();

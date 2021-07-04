@@ -51,8 +51,8 @@ public class JVMMetricsHandler extends AbstractKafkaHandler {
         super(manager, config);
         this.jvmSourceDispatcher = new JVMSourceDispatcher(manager);
         this.namingLengthControl = manager.find(CoreModule.NAME)
-                                                .provider()
-                                                .getService(NamingControl.class);
+                                          .provider()
+                                          .getService(NamingControl.class);
         MetricsCreator metricsCreator = manager.find(TelemetryModule.NAME)
                                                .provider()
                                                .getService(MetricsCreator.class);

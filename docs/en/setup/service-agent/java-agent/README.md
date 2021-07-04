@@ -169,6 +169,9 @@ property key | Description | Default |
 `plugin.toolkit.log.grpc.reporter.upstream_timeout` | How long grpc client will timeout in sending data to upstream. Unit is second.|`30` seconds|
 `plugin.lettuce.trace_redis_parameters` | If set to true, the parameters of Redis commands would be collected by Lettuce agent.| `false` |
 `plugin.lettuce.redis_parameter_max_length` | If set to positive number and `plugin.lettuce.trace_redis_parameters` is set to `true`, Redis command parameters would be collected and truncated to this length.| `128` |
+`plugin.neo4j.trace_cypher_parameters`|If set to true, the parameters of the cypher would be collected.|`false`|
+`plugin.neo4j.cypher_parameters_max_length`|If set to positive number, the `db.cypher.parameters` would be truncated to this length, otherwise it would be completely saved, which may cause performance problem.|`512`|
+`plugin.neo4j.cypher_body_max_length`|If set to positive number, the `db.statement` would be truncated to this length, otherwise it would be completely saved, which may cause performance problem.|`2048`|
 
 ## Dynamic Configurations
 All configurations above are static, if you need to change some agent settings at runtime, please read [CDS - Configuration Discovery Service document](configuration-discovery.md) for more details.
@@ -190,6 +193,8 @@ Now, we have the following known optional plugins.
 * Plugin of quartz-scheduler-2.x in the optional plugin folder. The reason for being an optional plugin is, many task scheduling systems are based on quartz-scheduler, this will cause duplicate tracing and link different sub-tasks as they share the same quartz level trigger, such as ElasticJob.
 * Plugin of spring-webflux-5.x in the optional plugin folder. Please only activate this plugin when you use webflux alone as a web container. If you are using SpringMVC 5 or Spring Gateway, you don't need this plugin.
 * Plugin of mybatis-3.x in optional plugin folder. The reason of being optional plugin is, many local span are generated, which also spend more CPU, memory and network.
+* Plugin of sentinel-1.x in the optional plugin folder. The reason for being an optional plugin is, the sentinel plugin generates a large number of local spans, which have a potential performance impact.
+* Plugin of ehcache-2.x in the optional plugin folder. The reason for being an optional plugin is, this plugin enhanced cache framework, generates large number of local spans, which have a potential performance impact.
 
 ## Bootstrap class plugins
 All bootstrap plugins are optional, due to unexpected risk. Bootstrap plugins are provided in `bootstrap-plugins` folder.

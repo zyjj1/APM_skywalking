@@ -65,6 +65,7 @@
 - resteasy-server-3.x
 - rocketMQ-3.x
 - rocketMQ-4.x
+- sentinel-1.x
 - servicecomb-0.x
 - servicecomb-1.x
 - sharding-jdbc-1.5.x
@@ -73,6 +74,7 @@
 - sharding-sphere-4.1.0
 - sharding-sphere-4.x
 - sharding-sphere-4.x-rc3
+- shardingsphere-5.0.0-beta
 - sofarpc
 - solrj-7.x
 - spring-annotation
@@ -118,3 +120,4 @@
 - apache-cxf-3.x
 - jsonrpc4j
 - spring-cloud-gateway-3.x
+- neo4j-4.x
