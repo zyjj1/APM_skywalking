@@ -75,7 +75,22 @@ public class MetricsQuery extends AbstractQuery<MetricsQuery> {
     public static String INSTANCE_JVM_THREAD_LIVE_COUNT = "instance_jvm_thread_live_count";
     public static String INSTANCE_JVM_THREAD_DAEMON_COUNT = "instance_jvm_thread_daemon_count";
     public static String INSTANCE_JVM_THREAD_PEAK_COUNT = "instance_jvm_thread_peak_count";
+    public static String INSTANCE_JVM_THREAD_RUNNABLE_STATE_THREAD_COUNT = "instance_jvm_thread_runnable_state_thread_count";
+    public static String INSTANCE_JVM_CLASS_LOADED_CLASS_COUNT = "instance_jvm_class_loaded_class_count";
+    public static String INSTANCE_JVM_CLASS_TOTAL_LOADED_CLASS_COUNT = "instance_jvm_class_total_loaded_class_count";
     public static String [] ALL_INSTANCE_JVM_METRICS = {
+        INSTANCE_JVM_CLASS_TOTAL_LOADED_CLASS_COUNT,
+        INSTANCE_JVM_CLASS_LOADED_CLASS_COUNT,
+        INSTANCE_JVM_THREAD_RUNNABLE_STATE_THREAD_COUNT,
+        INSTANCE_JVM_THREAD_LIVE_COUNT,
+        INSTANCE_JVM_THREAD_DAEMON_COUNT,
+        INSTANCE_JVM_THREAD_PEAK_COUNT,
+        INSTANCE_JVM_MEMORY_NOHEAP,
+        INSTANCE_JVM_MEMORY_HEAP_MAX,
+        INSTANCE_JVM_MEMORY_HEAP,
+    };
+
+    public static String [] ALL_INSTANCE_JVM_METRICS_COMPAT = {
         INSTANCE_JVM_THREAD_LIVE_COUNT,
         INSTANCE_JVM_THREAD_DAEMON_COUNT,
         INSTANCE_JVM_THREAD_PEAK_COUNT,
@@ -122,13 +137,21 @@ public class MetricsQuery extends AbstractQuery<MetricsQuery> {
     public static String METER_INSTANCE_METRICS_FIRST_AGGREGATION = "meter_oap_instance_metrics_first_aggregation";
     public static String METER_INSTANCE_PERSISTENCE_PREPARE_COUNT = "meter_oap_instance_persistence_prepare_count";
     public static String METER_INSTANCE_PERSISTENCE_EXECUTE_COUNT = "meter_oap_instance_persistence_execute_count";
+    public static String METER_JVM_THREAD_LIVE_COUNT = "meter_oap_jvm_thread_live_count";
+    public static String METER_JVM_THREAD_RUNNABLE_COUNT = "meter_oap_jvm_thread_runnable_count";
+    public static String METER_JVM_CLASS_LOADED_COUNT = "meter_oap_jvm_class_loaded_count";
+    public static String METER_JVM_CLASS_TOTAL_LOADED_COUNT = "meter_oap_jvm_class_total_loaded_count";
 
     public static String[] ALL_SO11Y_LINER_METRICS = {
         METER_INSTANCE_CPU_PERCENTAGE,
         METER_INSTANCE_JVM_MEMORY_BYTES_USED,
         METER_INSTANCE_METRICS_FIRST_AGGREGATION,
         METER_INSTANCE_PERSISTENCE_PREPARE_COUNT,
-        METER_INSTANCE_PERSISTENCE_EXECUTE_COUNT 
+        METER_INSTANCE_PERSISTENCE_EXECUTE_COUNT,
+        METER_JVM_THREAD_LIVE_COUNT,
+        METER_JVM_THREAD_RUNNABLE_COUNT,
+        METER_JVM_CLASS_LOADED_COUNT,
+        METER_JVM_CLASS_TOTAL_LOADED_COUNT
     };
 
     public static String[] ALL_ENVOY_LINER_METRICS = {
@@ -143,10 +166,8 @@ public class MetricsQuery extends AbstractQuery<MetricsQuery> {
         "envoy_worker_threads_max"
     };
 
-    public static String METER_INSTANCE_PERSISTENCE_EXECUTE_PERCENTILE = "meter_oap_instance_persistence_execute_percentile";
-
     public static String[] ALL_SO11Y_LABELED_METRICS = {
-        METER_INSTANCE_PERSISTENCE_EXECUTE_PERCENTILE
+        // Nothing to check for now.
     };
     private String id;
     private String metricsName;

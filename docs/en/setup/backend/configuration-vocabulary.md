@@ -12,6 +12,7 @@ core|default|role|Option values, `Mixed/Receiver/Aggregator`. **Receiver** mode 
 | - | - | restIdleTimeOut| Connector idle timeout in milliseconds of restful service| SW_CORE_REST_JETTY_IDLE_TIMEOUT|30000|
 | - | - | restAcceptorPriorityDelta| Thread priority delta to give to acceptor threads of restful service| SW_CORE_REST_JETTY_DELTA|0|
 | - | - | restAcceptQueueSize| ServerSocketChannel backlog  of restful service| SW_CORE_REST_JETTY_QUEUE_SIZE|0|
+| - | - | httpMaxRequestHeaderSize| Maximum request header size accepted| SW_CORE_HTTP_MAX_REQUEST_HEADER_SIZE|8192|
 | - | - | gRPCHost|Binding IP of gRPC service. Services include gRPC data report and internal communication among OAP nodes|SW_CORE_GRPC_HOST|0.0.0.0|
 | - | - | gRPCPort| Binding port of gRPC service | SW_CORE_GRPC_PORT|11800|
 | - | - | gRPCSslEnabled| Activate SSL for gRPC service | SW_CORE_GRPC_SSL_ENABLED|false|
@@ -19,6 +20,7 @@ core|default|role|Option values, `Mixed/Receiver/Aggregator`. **Receiver** mode 
 | - | - | gRPCSslCertChainPath| The file path of gRPC SSL cert chain| SW_CORE_GRPC_SSL_CERT_CHAIN_PATH| - |
 | - | - | gRPCSslTrustedCAPath| The file path of gRPC trusted CA| SW_CORE_GRPC_SSL_TRUSTED_CA_PATH| - |
 | - | - | downsampling| The activated level of down sampling aggregation | | Hour,Day|
+| - | - | persistentPeriod| The execution period of the persistent timer. Unit is second. | | 25 |
 | - | - | enableDataKeeperExecutor|Controller of TTL scheduler. Once disabled, TTL wouldn't work.|SW_CORE_ENABLE_DATA_KEEPER_EXECUTOR|true|
 | - | - | dataKeeperExecutePeriod|The execution period of TTL scheduler, unit is minute. Execution doesn't mean deleting data. The storage provider could override this, such as ElasticSearch storage.|SW_CORE_DATA_KEEPER_EXECUTE_PERIOD|5|
 | - | - | recordDataTTL|The lifecycle of record data. Record data includes traces, top n sampled records, and logs. Unit is day. Minimal value is 2.|SW_CORE_RECORD_DATA_TTL|3|
@@ -42,9 +44,7 @@ core|default|role|Option values, `Mixed/Receiver/Aggregator`. **Receiver** mode 
 | - | - | maxSizeOfNetworkAddressAlias|Max size of network address detected in the be monitored system.| - | 1_000_000|
 | - | - | maxPageSizeOfQueryProfileSnapshot|The max size in every OAP query for snapshot analysis| - | 500 |
 | - | - | maxSizeOfAnalyzeProfileSnapshot|The max number of snapshots analyzed by OAP| - | 12000 |
-| - | - | syncThreads|The number of threads used to synchronously refresh the metrics data to the storage.| SW_CORE_SYNC_THREADS | 2 |
 | - | - | prepareThreads|The number of threads used to prepare metrics data to the storage.| SW_CORE_PREPARE_THREADS | 2 |
-| - | - | maxSyncOperationNum|The maximum number of processes supported for each synchronous storage operation. When the number of the flush data is greater than this value, it will be assigned to multiple cores for execution.| SW_CORE_MAX_SYNC_OPERATION_NUM | 50000 |
 | - | - | enableEndpointNameGroupingByOpenapi |Turn it on then automatically grouping endpoint by the given OpenAPI definitions.| SW_CORE_ENABLE_ENDPOINT_NAME_GROUPING_BY_OPAENAPI | true |
 |cluster|standalone| - | standalone is not suitable for one node running, no available configuration.| - | - |
 | - | zookeeper|nameSpace|The namespace, represented by root path, isolates the configurations in the zookeeper.|SW_NAMESPACE| `/`, root path|
@@ -64,11 +64,12 @@ core|default|role|Option values, `Mixed/Receiver/Aggregator`. **Receiver** mode 
 | - | - | aclToken| ALC Token of Consul. Empty string means `without ALC token`.| SW_CLUSTER_CONSUL_ACLTOKEN | - |
 | - | - | internalComHost| The hostname registered in the Consul for the internal communication of OAP cluster.| - | -|
 | - | - | internalComPort| The port registered in the Consul for the internal communication of OAP cluster.| - | -1|
-| - | etcd| serviceName| Service name used for SkyWalking cluster. |SW_SERVICE_NAME|SkyWalking_OAP_Cluster|
-| - | - | hostPort| hosts and ports used of etcd cluster.| SW_CLUSTER_ETCD_HOST_PORT|localhost:2379|
-| - | - | isSSL| Open SSL for the connection between SkyWalking and etcd cluster.| - | - |
-| - | - | internalComHost| The hostname registered in the etcd for the internal communication of OAP cluster.| - | -|
-| - | - | internalComPort| The port registered in the etcd for the internal communication of OAP cluster.| - | -1|
+| - | etcd| serviceName| Service name used for SkyWalking cluster. |SW_CLUSTER_ETCD_SERVICE_NAME|SkyWalking_OAP_Cluster|
+| - | - | endpoints| hosts and ports used of etcd cluster.| SW_CLUSTER_ETCD_ENDPOINTS|localhost:2379|
+| - | - | namespace | Namespace used for SkyWalking cluster. |SW_CLUSTER_ETCD_NAMESPACE | /skywalking |
+| - | - | authentication | Whether has authentication. | SW_CLUSTER_ETCD_AUTHENTICATION | false |
+| - | - | user | Etcd auth username | SW_CLUSTER_ETCD_USER | |
+| - | - | password | Etcd auth password | SW_CLUSTER_ETCD_PASSWORD | |
 | - | Nacos| serviceName| Service name used for SkyWalking cluster. |SW_SERVICE_NAME|SkyWalking_OAP_Cluster|
 | - | - | hostPort| hosts and ports used of Nacos cluster.| SW_CLUSTER_NACOS_HOST_PORT|localhost:8848|
 | - | - | namespace| Namespace used by SkyWalking node coordination.| SW_CLUSTER_NACOS_NAMESPACE|public|
@@ -95,8 +96,9 @@ core|default|role|Option values, `Mixed/Receiver/Aggregator`. **Receiver** mode 
 | - | - | superDatasetDayStep | Represent the number of days in the super size dataset record index, the default value is the same as dayStep when the value is less than 0.|SW_SUPERDATASET_STORAGE_DAY_STEP|-1 |
 | - | - | superDatasetIndexShardsFactor | Super data set has been defined in the codes, such as trace segments. This factor provides more shards for the super data set, shards number = indexShardsNumber * superDatasetIndexShardsFactor. Also, this factor effects Zipkin and Jaeger traces.|SW_STORAGE_ES_SUPER_DATASET_INDEX_SHARDS_FACTOR|5 |
 | - | - | superDatasetIndexReplicasNumber | Represent the replicas number in the super size dataset record index.|SW_STORAGE_ES_SUPER_DATASET_INDEX_REPLICAS_NUMBER|0 |
-| - | - | bulkActions| Async bulk size of the record data batch execution. | SW_STORAGE_ES_BULK_ACTIONS| 1000|
-| - | - | flushInterval| Period of flush, no matter `bulkActions` reached or not. Unit is second.| SW_STORAGE_ES_FLUSH_INTERVAL | 10|
+| - | - | indexTemplateOrder| The order of index template. | SW_STORAGE_ES_INDEX_TEMPLATE_ORDER| 0|
+| - | - | bulkActions| Async bulk size of the record data batch execution. | SW_STORAGE_ES_BULK_ACTIONS| 5000|
+| - | - | flushInterval| Period of flush, no matter `bulkActions` reached or not. Unit is second. INT(flushInterval * 2/3) would be used for index refresh period.| SW_STORAGE_ES_FLUSH_INTERVAL | 15 (index refresh period = 10)|
 | - | - | concurrentRequests| The number of concurrent requests allowed to be executed. | SW_STORAGE_ES_CONCURRENT_REQUESTS| 2 |
 | - | - | resultWindowMaxSize | The max size of dataset when OAP loading cache, such as network alias. | SW_STORAGE_ES_QUERY_MAX_WINDOW_SIZE | 10000|
 | - | - | metadataQueryMaxSize | The max size of metadata per query. | SW_STORAGE_ES_QUERY_MAX_SIZE | 5000 |
@@ -120,9 +122,9 @@ core|default|role|Option values, `Mixed/Receiver/Aggregator`. **Receiver** mode 
 | - | - | superDatasetDayStep | Represent the number of days in the super size dataset record index, the default value is the same as dayStep when the value is less than 0.|SW_SUPERDATASET_STORAGE_DAY_STEP|-1 |
 | - | - | superDatasetIndexShardsFactor | Super data set has been defined in the codes, such as trace segments. This factor provides more shards for the super data set, shards number = indexShardsNumber * superDatasetIndexShardsFactor. Also, this factor effects Zipkin and Jaeger traces.|SW_STORAGE_ES_SUPER_DATASET_INDEX_SHARDS_FACTOR|5 |
 | - | - | superDatasetIndexReplicasNumber | Represent the replicas number in the super size dataset record index.|SW_STORAGE_ES_SUPER_DATASET_INDEX_REPLICAS_NUMBER|0 |
-| - | - | bulkActions| Async bulk size of the record data batch execution. | SW_STORAGE_ES_BULK_ACTIONS| 1000|
-| - | - | syncBulkActions| Sync bulk size of the metrics data batch execution. | SW_STORAGE_ES_SYNC_BULK_ACTIONS| 50000|
-| - | - | flushInterval| Period of flush, no matter `bulkActions` reached or not. Unit is second.| SW_STORAGE_ES_FLUSH_INTERVAL | 10|
+| - | - | indexTemplateOrder| The order of index template. | SW_STORAGE_ES_INDEX_TEMPLATE_ORDER| 0|
+| - | - | bulkActions| Async bulk size of data batch execution. | SW_STORAGE_ES_BULK_ACTIONS| 5000|
+| - | - | flushInterval| Period of flush, no matter `bulkActions` reached or not. Unit is second. INT(flushInterval * 2/3) would be used for index refresh period.| SW_STORAGE_ES_FLUSH_INTERVAL | 15 (index refresh period = 10)|
 | - | - | concurrentRequests| The number of concurrent requests allowed to be executed. | SW_STORAGE_ES_CONCURRENT_REQUESTS| 2 |
 | - | - | resultWindowMaxSize | The max size of dataset when OAP loading cache, such as network alias. | SW_STORAGE_ES_QUERY_MAX_WINDOW_SIZE | 10000|
 | - | - | metadataQueryMaxSize | The max size of metadata per query. | SW_STORAGE_ES_QUERY_MAX_SIZE | 5000 |
@@ -174,6 +176,7 @@ core|default|role|Option values, `Mixed/Receiver/Aggregator`. **Receiver** mode 
 | - | - | restIdleTimeOut| Connector idle timeout in milliseconds of restful service| SW_RECEIVER_SHARING_JETTY_IDLE_TIMEOUT|30000|
 | - | - | restAcceptorPriorityDelta| Thread priority delta to give to acceptor threads of restful service| SW_RECEIVER_SHARING_JETTY_DELTA|0|
 | - | - | restAcceptQueueSize| ServerSocketChannel backlog  of restful service| SW_RECEIVER_SHARING_JETTY_QUEUE_SIZE|0|
+| - | - | httpMaxRequestHeaderSize| Maximum request header size accepted| SW_RECEIVER_SHARING_HTTP_MAX_REQUEST_HEADER_SIZE|8192|
 | - | - | gRPCHost|Binding IP of gRPC service. Services include gRPC data report and internal communication among OAP nodes| SW_RECEIVER_GRPC_HOST | 0.0.0.0. Not Activated |
 | - | - | gRPCPort| Binding port of gRPC service | SW_RECEIVER_GRPC_PORT | Not Activated |
 | - | - | gRPCThreadPoolSize|Pool size of gRPC server| SW_RECEIVER_GRPC_THREAD_POOL_SIZE | CPU core * 4|
@@ -227,7 +230,6 @@ core|default|role|Option values, `Mixed/Receiver/Aggregator`. **Receiver** mode 
 | - | - | isSharding | it was true when OAP Server in cluster. | SW_KAFKA_FETCHER_IS_SHARDING | false |
 | - | - | createTopicIfNotExist | If true, create the Kafka topic when it does not exist. | - | true |
 | - | - | partitions | The number of partitions for the topic being created. | SW_KAFKA_FETCHER_PARTITIONS | 3 |
-| - | - | enableMeterSystem | To enable to fetch and handle [Meter System](backend-meter.md) data. | SW_KAFKA_FETCHER_ENABLE_METER_SYSTEM | false |
 | - | - | enableNativeProtoLog | To enable to fetch and handle native proto log data. | SW_KAFKA_FETCHER_ENABLE_NATIVE_PROTO_LOG | false |
 | - | - | enableNativeJsonLog | To enable to fetch and handle native json log data. | SW_KAFKA_FETCHER_ENABLE_NATIVE_JSON_LOG | false |
 | - | - | replicationFactor | The replication factor for each partition in the topic being created. | SW_KAFKA_FETCHER_PARTITIONS_FACTOR | 2 |
@@ -264,9 +266,11 @@ core|default|role|Option values, `Mixed/Receiver/Aggregator`. **Receiver** mode 
 | - | - | baseSleepTimeMs|The period of Zookeeper client between two retries. Unit is ms.|SW_CONFIG_ZK_BASE_SLEEP_TIME_MS|1000|
 | - | - | maxRetries| The max retry time of re-trying.|SW_CONFIG_ZK_MAX_RETRIES|3|
 | - | - | period | The period of data sync. Unit is second. | SW_CONFIG_ZK_PERIOD | 60 |
-| - | etcd| clusterName| Service name used for SkyWalking cluster. |SW_CONFIG_ETCD_CLUSTER_NAME|default|
-| - | - | serverAddr| hosts and ports used of etcd cluster.| SW_CONFIG_ETCD_SERVER_ADDR|localhost:2379|
-| - | - | group |Additional prefix of the configuration key| SW_CONFIG_ETCD_GROUP | skywalking|
+| - | etcd| endpoints | hosts and ports used of etcd cluster(If there are multiple, separate them with commas). | SW_CONFIG_ETCD_ENDPOINTS | localhost:2379 | 
+| - | - | namespace | Namespace used for SkyWalking cluster. |SW_CONFIG_ETCD_NAMESPACE | /skywalking |
+| - | - | authentication | Whether has authentication. | SW_CONFIG_ETCD_AUTHENTICATION | false |
+| - | - | user | Etcd auth username | SW_CONFIG_ETCD_USER | |
+| - | - | password | Etcd auth password | SW_CONFIG_ETCD_PASSWORD | |
 | - | - | period | The period of data sync. Unit is second. | SW_CONFIG_ZK_PERIOD | 60
 | - | consul | hostPort| hosts and ports used of Consul cluster.| SW_CONFIG_CONSUL_HOST_AND_PORTS|localhost:8500|
 | - | - | aclToken| ALC Token of Consul. Empty string means `without ALC token`.| SW_CONFIG_CONSUL_ACL_TOKEN | - |
