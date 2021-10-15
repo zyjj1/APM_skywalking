@@ -20,14 +20,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.2.5.RELEASE</version>
-    </parent>
-
     <modelVersion>4.0.0</modelVersion>
-    <name>SkyWalking End to End Tests</name>
     <groupId>org.apache.skywalking</groupId>
     <artifactId>apache-skywalking-e2e</artifactId>
     <version>1.0.0</version>
@@ -44,13 +37,7 @@
     </modules>
 
     <properties>
-        <sw.version>
-            <!--
-            Please manually set the SkyWalking version here to build in the IDE
-            (if you build from command line, just use ./mvnw -Dsw.version=x.y.z),
-            but make sure not to check it into the code base / git
-            -->
-        </sw.version>
+        <sw.version>8.7.0</sw.version>
 
         <java.version>1.8</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
@@ -62,19 +49,18 @@
         <spring.cloud.version>2.1.2.RELEASE</spring.cloud.version>
         <jupeter.version>5.6.0</jupeter.version>
         <jackson.version>2.9.7</jackson.version>
-        <guava.version>28.2-jre</guava.version>
+        <guava.version>30.1.1-jre</guava.version>
         <h2.version>1.4.199</h2.version>
         <mysql.version>8.0.13</mysql.version>
         <lombok.version>1.18.20</lombok.version>
         <kafka-clients.version>2.4.1</kafka-clients.version>
-        <jacoco.version>0.8.6</jacoco.version>
 
         <maven-failsafe-plugin.version>2.22.0</maven-failsafe-plugin.version>
         <maven-compiler-plugin.version>3.8.0</maven-compiler-plugin.version>
         <maven-checkstyle-plugin.version>3.1.0</maven-checkstyle-plugin.version>
-        <maven-antrun-plugin.version>3.0.0</maven-antrun-plugin.version>
+        <maven-surefire-plugin.version>2.22.0</maven-surefire-plugin.version>
 
-        <testcontainers.version>1.15.1</testcontainers.version>
+        <testcontainers.version>1.15.3</testcontainers.version>
     </properties>
 
     <repositories>
@@ -91,7 +77,6 @@
        </repository>
     </repositories>
 
-
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -103,6 +88,13 @@
                 <groupId>org.testcontainers</groupId>
                 <artifactId>testcontainers</artifactId>
                 <version>${testcontainers.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>2.2.5.RELEASE</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -137,19 +129,9 @@
     </dependencies>
 
     <build>
-        <testResources>
-            <testResource>
-                <directory>${project.basedir}/src/test/resources</directory>
-            </testResource>
-            <testResource>
-                <directory>${basedir}/docker</directory>
-                <includes>
-                    <include>**/*</include>
-                </includes>
-            </testResource>
-        </testResources>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven-compiler-plugin.version}</version>
                 <configuration>
@@ -159,6 +141,7 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <version>${maven-failsafe-plugin.version}</version>
                 <configuration>
@@ -179,7 +162,6 @@
                 <version>${maven-checkstyle-plugin.version}</version>
                 <configuration>
                     <configLocation>${maven.multiModuleProjectDirectory}/apm-checkstyle/checkStyle.xml</configLocation>
-                    <headerLocation>${maven.multiModuleProjectDirectory}/apm-checkstyle/CHECKSTYLE_HEAD</headerLocation>
                     <encoding>UTF-8</encoding>
                     <consoleOutput>true</consoleOutput>
                     <includeTestSourceDirectory>true</includeTestSourceDirectory>
@@ -199,9 +181,6 @@
                         **/.asf.yaml,
                         **/.github/**
                     </resourceExcludes>
-                    <propertyExpansion>
-                        import.control=${maven.multiModuleProjectDirectory}/apm-checkstyle/importControl.xml
-                    </propertyExpansion>
                 </configuration>
                 <executions>
                     <execution>
@@ -212,6 +191,11 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
             </plugin>
         </plugins>
     </build>

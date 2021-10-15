@@ -19,7 +19,9 @@
 package org.apache.skywalking.oap.server.analyzer.provider.trace.parser.listener;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -85,7 +87,14 @@ class SourceBuilder {
     private boolean status;
     @Getter
     @Setter
+    @Deprecated
     private int responseCode;
+    @Getter
+    @Setter
+    private int httpResponseStatusCode;
+    @Getter
+    @Setter
+    private String rpcStatusCode;
     @Getter
     @Setter
     private RequestType type;
@@ -97,6 +106,8 @@ class SourceBuilder {
     private long timeBucket;
     @Getter
     private final List<String> tags = new ArrayList<>();
+    @Getter
+    private final Map<String, String> originalTags = new HashMap<>();
 
     void prepare() {
         this.sourceServiceName = namingControl.formatServiceName(sourceServiceName);
@@ -119,9 +130,12 @@ class SourceBuilder {
         all.setLatency(latency);
         all.setStatus(status);
         all.setResponseCode(responseCode);
+        all.setHttpResponseStatusCode(httpResponseStatusCode);
+        all.setRpcStatusCode(rpcStatusCode);
         all.setType(type);
         all.setTimeBucket(timeBucket);
         all.setTags(tags);
+        all.setOriginalTags(originalTags);
         return all;
     }
 
@@ -137,9 +151,12 @@ class SourceBuilder {
         service.setLatency(latency);
         service.setStatus(status);
         service.setResponseCode(responseCode);
+        service.setHttpResponseStatusCode(httpResponseStatusCode);
+        service.setRpcStatusCode(rpcStatusCode);
         service.setType(type);
         service.setTags(tags);
         service.setTimeBucket(timeBucket);
+        service.setOriginalTags(originalTags);
         return service;
     }
 
@@ -159,6 +176,8 @@ class SourceBuilder {
         serviceRelation.setLatency(latency);
         serviceRelation.setStatus(status);
         serviceRelation.setResponseCode(responseCode);
+        serviceRelation.setHttpResponseStatusCode(httpResponseStatusCode);
+        serviceRelation.setRpcStatusCode(rpcStatusCode);
         serviceRelation.setType(type);
         serviceRelation.setDetectPoint(detectPoint);
         serviceRelation.setTimeBucket(timeBucket);
@@ -178,8 +197,11 @@ class SourceBuilder {
         serviceInstance.setLatency(latency);
         serviceInstance.setStatus(status);
         serviceInstance.setResponseCode(responseCode);
+        serviceInstance.setHttpResponseStatusCode(httpResponseStatusCode);
+        serviceInstance.setRpcStatusCode(rpcStatusCode);
         serviceInstance.setType(type);
         serviceInstance.setTags(tags);
+        serviceInstance.setOriginalTags(originalTags);
         serviceInstance.setTimeBucket(timeBucket);
         return serviceInstance;
     }
@@ -203,6 +225,8 @@ class SourceBuilder {
         serviceInstanceRelation.setLatency(latency);
         serviceInstanceRelation.setStatus(status);
         serviceInstanceRelation.setResponseCode(responseCode);
+        serviceInstanceRelation.setHttpResponseStatusCode(httpResponseStatusCode);
+        serviceInstanceRelation.setRpcStatusCode(rpcStatusCode);
         serviceInstanceRelation.setType(type);
         serviceInstanceRelation.setDetectPoint(detectPoint);
         serviceInstanceRelation.setTimeBucket(timeBucket);
@@ -221,8 +245,11 @@ class SourceBuilder {
         endpoint.setLatency(latency);
         endpoint.setStatus(status);
         endpoint.setResponseCode(responseCode);
+        endpoint.setHttpResponseStatusCode(httpResponseStatusCode);
+        endpoint.setRpcStatusCode(rpcStatusCode);
         endpoint.setType(type);
         endpoint.setTags(tags);
+        endpoint.setOriginalTags(originalTags);
         endpoint.setTimeBucket(timeBucket);
         return endpoint;
     }
@@ -252,6 +279,8 @@ class SourceBuilder {
         endpointRelation.setRpcLatency(latency);
         endpointRelation.setStatus(status);
         endpointRelation.setResponseCode(responseCode);
+        endpointRelation.setHttpResponseStatusCode(httpResponseStatusCode);
+        endpointRelation.setRpcStatusCode(rpcStatusCode);
         endpointRelation.setType(type);
         endpointRelation.setDetectPoint(detectPoint);
         endpointRelation.setTimeBucket(timeBucket);
@@ -288,5 +317,6 @@ class SourceBuilder {
 
     public void setTag(KeyStringValuePair tag) {
         tags.add(tag.getKey().trim() + ":" + tag.getValue().trim());
+        originalTags.put(tag.getKey(), tag.getValue());
     }
 }

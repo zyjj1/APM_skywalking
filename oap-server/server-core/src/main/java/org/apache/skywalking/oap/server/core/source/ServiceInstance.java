@@ -18,12 +18,12 @@
 
 package org.apache.skywalking.oap.server.core.source;
 
+import java.util.List;
+import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.skywalking.oap.server.core.analysis.IDManager;
 import org.apache.skywalking.oap.server.core.analysis.NodeType;
-
-import java.util.List;
 
 import static org.apache.skywalking.oap.server.core.source.DefaultScopeDefine.SERVICE_INSTANCE;
 import static org.apache.skywalking.oap.server.core.source.DefaultScopeDefine.SERVICE_INSTANCE_CATALOG_NAME;
@@ -70,13 +70,22 @@ public class ServiceInstance extends Source {
     private boolean status;
     @Getter
     @Setter
+    @Deprecated
     private int responseCode;
+    @Getter
+    @Setter
+    private int httpResponseStatusCode;
+    @Getter
+    @Setter
+    private String rpcStatusCode;
     @Getter
     @Setter
     private RequestType type;
     @Getter
     @Setter
     private List<String> tags;
+    @Setter
+    private Map<String, String> originalTags;
     @Getter
     @Setter
     private SideCar sideCar = new SideCar();
@@ -88,5 +97,9 @@ public class ServiceInstance extends Source {
     @Override
     public void prepare() {
         serviceId = IDManager.ServiceID.buildId(serviceName, nodeType);
+    }
+
+    public String getTag(String key) {
+        return originalTags.get(key);
     }
 }

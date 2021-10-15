@@ -19,13 +19,13 @@
 package org.apache.skywalking.oap.server.core.analysis.worker;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.skywalking.apm.commons.datacarrier.DataCarrier;
@@ -159,10 +159,12 @@ public class MetricsPersistentWorker extends PersistenceWorker<Metrics> {
     }
 
     @Override
-    public List<PrepareRequest> prepareBatch(Collection<Metrics> lastCollection) {
+    public List<PrepareRequest> buildBatchRequests() {
         if (persistentCounter++ % persistentMod != 0) {
             return Collections.EMPTY_LIST;
         }
+
+        final List<Metrics> lastCollection = getCache().read();
 
         long start = System.currentTimeMillis();
         if (lastCollection.size() == 0) {
@@ -321,7 +323,7 @@ public class MetricsPersistentWorker extends PersistenceWorker<Metrics> {
      */
     private class PersistentConsumer implements IConsumer<Metrics> {
         @Override
-        public void init() {
+        public void init(final Properties properties) {
 
         }
 
