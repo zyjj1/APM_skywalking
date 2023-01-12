@@ -20,17 +20,17 @@ package org.apache.skywalking.oap.server.storage.plugin.jdbc.postgresql.dao;
 
 import org.apache.skywalking.oap.server.core.analysis.metrics.Metrics;
 import org.apache.skywalking.oap.server.library.client.jdbc.hikaricp.JDBCHikariCPClient;
-import org.apache.skywalking.oap.server.storage.plugin.jdbc.h2.dao.H2MetricsQueryDAO;
+import org.apache.skywalking.oap.server.storage.plugin.jdbc.common.dao.JDBCMetricsQueryDAO;
 
-public class PostgreSQLMetricsQueryDAO extends H2MetricsQueryDAO {
-    
+public class PostgreSQLMetricsQueryDAO extends JDBCMetricsQueryDAO {
+
     public PostgreSQLMetricsQueryDAO(JDBCHikariCPClient h2Client) {
         super(h2Client);
     }
-    
+
     @Override
     protected StringBuilder buildMetricsValueSql(String op, String valueColumnName, String conditionName) {
         return new StringBuilder(
-                "select " + Metrics.ENTITY_ID + " id, " + op + "(" + valueColumnName + ") as value from " + conditionName + " where ");
+                "select " + Metrics.ENTITY_ID + " id, " + op + "(" + valueColumnName + ") as result from " + conditionName + " where ");
     }
 }

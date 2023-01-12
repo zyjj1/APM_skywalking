@@ -29,11 +29,12 @@ import org.apache.skywalking.oap.server.core.CoreModuleConfig;
 import org.apache.skywalking.oap.server.core.CoreModuleProvider;
 import org.apache.skywalking.oap.server.core.config.ComponentLibraryCatalogService;
 import org.apache.skywalking.oap.server.core.config.IComponentLibraryCatalogService;
-import org.apache.skywalking.oap.server.core.query.ProfileTaskQueryService;
+import org.apache.skywalking.oap.server.core.profiling.trace.ProfileTaskQueryService;
 import org.apache.skywalking.oap.server.core.query.TraceQueryService;
 import org.apache.skywalking.oap.server.core.query.type.ProfileAnalyzeTimeRange;
 import org.apache.skywalking.oap.server.core.storage.StorageModule;
-import org.apache.skywalking.oap.server.core.storage.profile.IProfileThreadSnapshotQueryDAO;
+import org.apache.skywalking.oap.server.core.storage.profiling.trace.IProfileThreadSnapshotQueryDAO;
+import org.apache.skywalking.oap.server.core.storage.query.ISpanAttachedEventQueryDAO;
 import org.apache.skywalking.oap.server.core.storage.query.ITraceQueryDAO;
 import org.apache.skywalking.oap.server.library.module.ModuleManager;
 import org.apache.skywalking.oap.server.library.util.ResourceUtils;
@@ -86,6 +87,7 @@ public class ProfileSnapshotExporterTest {
         Mockito.when(moduleProvider.getService(IProfileThreadSnapshotQueryDAO.class))
                .thenReturn(new ProfileExportSnapshotDAO(exportedData));
         Mockito.when(moduleProvider.getService(ITraceQueryDAO.class)).thenReturn(new ProfileTraceDAO(exportedData));
+        Mockito.when(moduleProvider.getService(ISpanAttachedEventQueryDAO.class)).thenReturn(new SpanAttachedEventQueryDAO());
     }
 
     @Test

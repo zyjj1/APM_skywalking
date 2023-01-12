@@ -28,7 +28,7 @@ public class ServiceMetaDispatcher implements SourceDispatcher<ServiceMeta> {
         ServiceTraffic traffic = new ServiceTraffic();
         traffic.setTimeBucket(source.getTimeBucket());
         traffic.setName(source.getName());
-        traffic.setNodeType(source.getNodeType());
+        traffic.setLayer(source.getLayer());
         MetricsStreamProcessor.getInstance().in(traffic);
     }
 }

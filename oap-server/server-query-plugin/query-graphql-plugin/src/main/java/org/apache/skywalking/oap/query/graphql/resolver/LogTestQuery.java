@@ -18,7 +18,7 @@
 
 package org.apache.skywalking.oap.query.graphql.resolver;
 
-import com.coxautodev.graphql.tools.GraphQLQueryResolver;
+import graphql.kickstart.tools.GraphQLQueryResolver;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -43,7 +43,7 @@ import org.apache.skywalking.oap.server.library.util.ProtoBufJsonUtils;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
-import static org.apache.skywalking.apm.util.StringUtil.isNotBlank;
+import static org.apache.skywalking.oap.server.library.util.StringUtil.isNotBlank;
 
 @RequiredArgsConstructor
 public class LogTestQuery implements GraphQLQueryResolver {
@@ -55,7 +55,7 @@ public class LogTestQuery implements GraphQLQueryResolver {
         if (!config.isEnableLogTestTool()) {
             throw new IllegalAccessException(
                 "LAL debug tool is not enabled. To enable, please set SW_QUERY_GRAPHQL_ENABLE_LOG_TEST_TOOL=true," +
-                    "for more details, refer to https://skywalking.apache.org/docs/main/latest/en/setup/backend/configuration-vocabulary/");
+                    "for more details, refer to https://skywalking.apache.org/docs/main/next/en/setup/backend/configuration-vocabulary/");
         }
 
         requireNonNull(request, "request");
@@ -65,8 +65,7 @@ public class LogTestQuery implements GraphQLQueryResolver {
         final LogAnalyzerModuleProvider provider =
             (LogAnalyzerModuleProvider) moduleManager.find(LogAnalyzerModule.NAME)
                                                      .provider();
-        final LogAnalyzerModuleConfig config =
-            (LogAnalyzerModuleConfig) provider.createConfigBeanIfAbsent();
+        final LogAnalyzerModuleConfig config = provider.getModuleConfig();
         final DSL dsl = DSL.of(moduleManager, config, request.getDsl());
         final Binding binding = new Binding();
 

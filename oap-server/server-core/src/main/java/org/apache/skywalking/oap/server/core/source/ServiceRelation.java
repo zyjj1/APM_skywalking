@@ -20,9 +20,9 @@ package org.apache.skywalking.oap.server.core.source;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.skywalking.apm.util.StringUtil;
+import org.apache.skywalking.oap.server.core.analysis.Layer;
+import org.apache.skywalking.oap.server.library.util.StringUtil;
 import org.apache.skywalking.oap.server.core.analysis.IDManager;
-import org.apache.skywalking.oap.server.core.analysis.NodeType;
 
 import static org.apache.skywalking.oap.server.core.source.DefaultScopeDefine.SERVICE_RELATION;
 import static org.apache.skywalking.oap.server.core.source.DefaultScopeDefine.SERVICE_RELATION_CATALOG_NAME;
@@ -56,19 +56,21 @@ public class ServiceRelation extends Source {
     @Setter
     @ScopeDefaultColumn.DefinedByField(columnName = "source_name", requireDynamicActive = true)
     private String sourceServiceName;
-    @Setter
-    private NodeType sourceServiceNodeType;
     @Getter
     @Setter
     private String sourceServiceInstanceName;
+    @Getter
+    @Setter
+    private Layer sourceLayer;
     @Getter
     private String destServiceId;
     @Getter
     @Setter
     @ScopeDefaultColumn.DefinedByField(columnName = "dest_name", requireDynamicActive = true)
     private String destServiceName;
+    @Getter
     @Setter
-    private NodeType destServiceNodeType;
+    private Layer destLayer;
     @Getter
     @Setter
     private String destServiceInstanceName;
@@ -84,10 +86,6 @@ public class ServiceRelation extends Source {
     @Getter
     @Setter
     private boolean status;
-    @Getter
-    @Setter
-    @Deprecated
-    private int responseCode;
     @Getter
     @Setter
     private int httpResponseStatusCode;
@@ -106,13 +104,10 @@ public class ServiceRelation extends Source {
     @Getter
     @Setter
     private SideCar sideCar = new SideCar();
-    @Getter
-    @Setter
-    private TCPInfo tcpInfo = new TCPInfo();
 
     @Override
     public void prepare() {
-        sourceServiceId = IDManager.ServiceID.buildId(sourceServiceName, sourceServiceNodeType);
-        destServiceId = IDManager.ServiceID.buildId(destServiceName, destServiceNodeType);
+        sourceServiceId = IDManager.ServiceID.buildId(sourceServiceName, sourceLayer.isNormal());
+        destServiceId = IDManager.ServiceID.buildId(destServiceName, destLayer.isNormal());
     }
 }

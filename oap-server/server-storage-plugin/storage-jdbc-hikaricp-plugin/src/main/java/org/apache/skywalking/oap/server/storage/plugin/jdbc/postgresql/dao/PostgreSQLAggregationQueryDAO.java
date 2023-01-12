@@ -20,20 +20,20 @@ package org.apache.skywalking.oap.server.storage.plugin.jdbc.postgresql.dao;
 
 import org.apache.skywalking.oap.server.core.analysis.metrics.Metrics;
 import org.apache.skywalking.oap.server.library.client.jdbc.hikaricp.JDBCHikariCPClient;
-import org.apache.skywalking.oap.server.storage.plugin.jdbc.h2.dao.H2AggregationQueryDAO;
+import org.apache.skywalking.oap.server.storage.plugin.jdbc.common.dao.JDBCAggregationQueryDAO;
 
-public class PostgreSQLAggregationQueryDAO extends H2AggregationQueryDAO {
-    
+public class PostgreSQLAggregationQueryDAO extends JDBCAggregationQueryDAO {
+
     public PostgreSQLAggregationQueryDAO(JDBCHikariCPClient h2Client) {
         super(h2Client);
     }
-    
+
     @Override
     protected StringBuilder buildMetricsValueSql(String valueColumnName, String metricsName) {
         StringBuilder sql = new StringBuilder();
         sql.append("select * from (select avg(")
                 .append(valueColumnName)
-                .append(") as value,")
+                .append(") as result,")
                 .append(Metrics.ENTITY_ID)
                 .append(" from ")
                 .append(metricsName)

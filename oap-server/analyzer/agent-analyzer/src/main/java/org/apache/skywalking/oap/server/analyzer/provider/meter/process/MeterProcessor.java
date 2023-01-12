@@ -26,9 +26,8 @@ import org.apache.skywalking.apm.network.language.agent.v3.MeterBucketValue;
 import org.apache.skywalking.apm.network.language.agent.v3.MeterData;
 import org.apache.skywalking.apm.network.language.agent.v3.MeterHistogram;
 import org.apache.skywalking.apm.network.language.agent.v3.MeterSingleValue;
-import org.apache.skywalking.apm.util.StringUtil;
+import org.apache.skywalking.oap.server.library.util.StringUtil;
 import org.apache.skywalking.oap.meter.analyzer.MetricConvert;
-import org.apache.skywalking.oap.meter.analyzer.dsl.HistogramType;
 import org.apache.skywalking.oap.meter.analyzer.dsl.Sample;
 import org.apache.skywalking.oap.meter.analyzer.dsl.SampleFamilyBuilder;
 import org.apache.skywalking.oap.server.library.util.CollectionUtils;
@@ -133,11 +132,11 @@ public class MeterProcessor {
         }
 
         try {
-            converts.stream().forEach(convert -> convert.toMeter(meters.entrySet().stream().collect(toImmutableMap(
+            converts.forEach(convert -> convert.toMeter(meters.entrySet().stream().collect(toImmutableMap(
                 Map.Entry::getKey,
                 v -> SampleFamilyBuilder.newBuilder(
                     v.getValue().stream().map(s -> s.build(service, serviceInstance, timestamp)).toArray(Sample[]::new)
-                ).histogramType(HistogramType.ORDINARY).defaultHistogramBucketUnit(TimeUnit.MILLISECONDS).build()
+                ).defaultHistogramBucketUnit(TimeUnit.MILLISECONDS).build()
             ))));
         } catch (Exception e) {
             log.warn("Process meters failure.", e);

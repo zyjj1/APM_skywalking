@@ -18,25 +18,34 @@
 
 package org.apache.skywalking.oap.server.core.analysis.manual.relation.instance;
 
-import java.util.HashMap;
-import java.util.Map;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.skywalking.oap.server.core.Const;
+import org.apache.skywalking.oap.server.core.analysis.MetricsExtension;
 import org.apache.skywalking.oap.server.core.analysis.Stream;
 import org.apache.skywalking.oap.server.core.analysis.metrics.Metrics;
 import org.apache.skywalking.oap.server.core.analysis.worker.MetricsStreamProcessor;
 import org.apache.skywalking.oap.server.core.remote.grpc.proto.RemoteData;
 import org.apache.skywalking.oap.server.core.source.DefaultScopeDefine;
-import org.apache.skywalking.oap.server.core.storage.StorageHashMapBuilder;
+import org.apache.skywalking.oap.server.core.storage.ShardingAlgorithm;
+import org.apache.skywalking.oap.server.core.storage.StorageID;
+import org.apache.skywalking.oap.server.core.storage.annotation.BanyanDB;
 import org.apache.skywalking.oap.server.core.storage.annotation.Column;
+import org.apache.skywalking.oap.server.core.storage.annotation.SQLDatabase;
+import org.apache.skywalking.oap.server.core.storage.type.Convert2Entity;
+import org.apache.skywalking.oap.server.core.storage.type.Convert2Storage;
+import org.apache.skywalking.oap.server.core.storage.type.StorageBuilder;
+
+import static org.apache.skywalking.oap.server.core.analysis.metrics.Metrics.ENTITY_ID;
+import static org.apache.skywalking.oap.server.core.analysis.metrics.Metrics.TIME_BUCKET;
 
 @Stream(name = ServiceInstanceRelationClientSideMetrics.INDEX_NAME, scopeId = DefaultScopeDefine.SERVICE_INSTANCE_RELATION,
     builder = ServiceInstanceRelationClientSideMetrics.Builder.class, processor = MetricsStreamProcessor.class)
+@MetricsExtension(supportDownSampling = true, supportUpdate = false, timeRelativeID = true)
 @EqualsAndHashCode(of = {
     "entityId"
 }, callSuper = true)
+@SQLDatabase.Sharding(shardingAlgorithm = ShardingAlgorithm.TIME_BUCKET_SHARDING_ALGORITHM, tableShardingColumn = TIME_BUCKET, dataSourceShardingColumn = ENTITY_ID)
 public class ServiceInstanceRelationClientSideMetrics extends Metrics {
 
     public static final String INDEX_NAME = "service_instance_relation_client_side";
@@ -44,7 +53,6 @@ public class ServiceInstanceRelationClientSideMetrics extends Metrics {
     public static final String SOURCE_SERVICE_INSTANCE_ID = "source_service_instance_id";
     public static final String DEST_SERVICE_ID = "dest_service_id";
     public static final String DEST_SERVICE_INSTANCE_ID = "dest_service_instance_id";
-    public static final String COMPONENT_ID = "component_id";
 
     @Setter
     @Getter
@@ -64,21 +72,19 @@ public class ServiceInstanceRelationClientSideMetrics extends Metrics {
     private String destServiceInstanceId;
     @Setter
     @Getter
-    @Column(columnName = COMPONENT_ID, storageOnly = true)
-    private int componentId;
-    @Setter
-    @Getter
     @Column(columnName = ENTITY_ID, length = 512)
+    @BanyanDB.SeriesID(index = 0)
     private String entityId;
 
     @Override
-    protected String id0() {
-        return getTimeBucket() + Const.ID_CONNECTOR + entityId;
+    protected StorageID id0() {
+        return new StorageID().append(TIME_BUCKET, getTimeBucket())
+                              .append(ENTITY_ID, entityId);
     }
 
     @Override
     public boolean combine(Metrics metrics) {
-        return true;
+        return false;
     }
 
     @Override
@@ -94,7 +100,6 @@ public class ServiceInstanceRelationClientSideMetrics extends Metrics {
         metrics.setSourceServiceInstanceId(getSourceServiceInstanceId());
         metrics.setDestServiceId(getDestServiceId());
         metrics.setDestServiceInstanceId(getDestServiceInstanceId());
-        metrics.setComponentId(getComponentId());
         metrics.setEntityId(getEntityId());
         return metrics;
     }
@@ -107,7 +112,6 @@ public class ServiceInstanceRelationClientSideMetrics extends Metrics {
         metrics.setSourceServiceInstanceId(getSourceServiceInstanceId());
         metrics.setDestServiceId(getDestServiceId());
         metrics.setDestServiceInstanceId(getDestServiceInstanceId());
-        metrics.setComponentId(getComponentId());
         metrics.setEntityId(getEntityId());
         return metrics;
     }
@@ -127,8 +131,6 @@ public class ServiceInstanceRelationClientSideMetrics extends Metrics {
         setDestServiceId(remoteData.getDataStrings(3));
         setDestServiceInstanceId(remoteData.getDataStrings(4));
 
-        setComponentId(remoteData.getDataIntegers(0));
-
         setTimeBucket(remoteData.getDataLongs(0));
     }
 
@@ -142,38 +144,32 @@ public class ServiceInstanceRelationClientSideMetrics extends Metrics {
         remoteBuilder.addDataStrings(getDestServiceId());
         remoteBuilder.addDataStrings(getDestServiceInstanceId());
 
-        remoteBuilder.addDataIntegers(getComponentId());
-
         remoteBuilder.addDataLongs(getTimeBucket());
         return remoteBuilder;
     }
 
-    public static class Builder implements StorageHashMapBuilder<ServiceInstanceRelationClientSideMetrics> {
-
+    public static class Builder implements StorageBuilder<ServiceInstanceRelationClientSideMetrics> {
         @Override
-        public ServiceInstanceRelationClientSideMetrics storage2Entity(Map<String, Object> dbMap) {
+        public ServiceInstanceRelationClientSideMetrics storage2Entity(final Convert2Entity converter) {
             ServiceInstanceRelationClientSideMetrics metrics = new ServiceInstanceRelationClientSideMetrics();
-            metrics.setEntityId((String) dbMap.get(ENTITY_ID));
-            metrics.setSourceServiceId((String) dbMap.get(SOURCE_SERVICE_ID));
-            metrics.setSourceServiceInstanceId((String) dbMap.get(SOURCE_SERVICE_INSTANCE_ID));
-            metrics.setDestServiceId((String) dbMap.get(DEST_SERVICE_ID));
-            metrics.setDestServiceInstanceId((String) dbMap.get(DEST_SERVICE_INSTANCE_ID));
-            metrics.setComponentId(((Number) dbMap.get(COMPONENT_ID)).intValue());
-            metrics.setTimeBucket(((Number) dbMap.get(TIME_BUCKET)).longValue());
+            metrics.setEntityId((String) converter.get(ENTITY_ID));
+            metrics.setSourceServiceId((String) converter.get(SOURCE_SERVICE_ID));
+            metrics.setSourceServiceInstanceId((String) converter.get(SOURCE_SERVICE_INSTANCE_ID));
+            metrics.setDestServiceId((String) converter.get(DEST_SERVICE_ID));
+            metrics.setDestServiceInstanceId((String) converter.get(DEST_SERVICE_INSTANCE_ID));
+            metrics.setTimeBucket(((Number) converter.get(TIME_BUCKET)).longValue());
             return metrics;
         }
 
         @Override
-        public Map<String, Object> entity2Storage(ServiceInstanceRelationClientSideMetrics storageData) {
-            Map<String, Object> map = new HashMap<>();
-            map.put(ENTITY_ID, storageData.getEntityId());
-            map.put(SOURCE_SERVICE_ID, storageData.getSourceServiceId());
-            map.put(SOURCE_SERVICE_INSTANCE_ID, storageData.getSourceServiceInstanceId());
-            map.put(DEST_SERVICE_ID, storageData.getDestServiceId());
-            map.put(DEST_SERVICE_INSTANCE_ID, storageData.getDestServiceInstanceId());
-            map.put(COMPONENT_ID, storageData.getComponentId());
-            map.put(TIME_BUCKET, storageData.getTimeBucket());
-            return map;
+        public void entity2Storage(final ServiceInstanceRelationClientSideMetrics storageData,
+                                   final Convert2Storage converter) {
+            converter.accept(ENTITY_ID, storageData.getEntityId());
+            converter.accept(SOURCE_SERVICE_ID, storageData.getSourceServiceId());
+            converter.accept(SOURCE_SERVICE_INSTANCE_ID, storageData.getSourceServiceInstanceId());
+            converter.accept(DEST_SERVICE_ID, storageData.getDestServiceId());
+            converter.accept(DEST_SERVICE_INSTANCE_ID, storageData.getDestServiceInstanceId());
+            converter.accept(TIME_BUCKET, storageData.getTimeBucket());
         }
     }
 }

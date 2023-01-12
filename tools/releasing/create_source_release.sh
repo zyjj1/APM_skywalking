@@ -58,6 +58,11 @@ git checkout ${TAG_NAME}
 git submodule init
 git submodule update
 
+# Generate a static version.properties and override the template when releasing source tar
+# because after that there is no Git information anymore.
+./mvnw -q -pl oap-server/server-starter initialize \
+       -DgenerateGitPropertiesFilename="$(pwd)/oap-server/server-starter/src/main/resources/version.properties"
+
 cd ..
 
 tar czf ${PRODUCT_NAME}-src.tgz \
@@ -66,6 +71,7 @@ tar czf ${PRODUCT_NAME}-src.tgz \
     --exclude .github \
     --exclude .gitignore \
     --exclude .gitmodules \
+    --exclude .mvn/wrapper/maven-wrapper.jar \
     ${PRODUCT_NAME}
 
 gpg --armor --detach-sig ${PRODUCT_NAME}-src.tgz

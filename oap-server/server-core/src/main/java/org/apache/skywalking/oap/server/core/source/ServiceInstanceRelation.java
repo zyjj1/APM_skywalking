@@ -20,9 +20,9 @@ package org.apache.skywalking.oap.server.core.source;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.skywalking.apm.util.StringUtil;
+import org.apache.skywalking.oap.server.core.analysis.Layer;
+import org.apache.skywalking.oap.server.library.util.StringUtil;
 import org.apache.skywalking.oap.server.core.analysis.IDManager;
-import org.apache.skywalking.oap.server.core.analysis.NodeType;
 
 import static org.apache.skywalking.oap.server.core.source.DefaultScopeDefine.SERVICE_INSTANCE_RELATION;
 import static org.apache.skywalking.oap.server.core.source.DefaultScopeDefine.SERVICE_INSTANCE_RELATION_CATALOG_NAME;
@@ -58,8 +58,9 @@ public class ServiceInstanceRelation extends Source {
     @Setter
     @ScopeDefaultColumn.DefinedByField(columnName = "source_service_name", requireDynamicActive = true)
     private String sourceServiceName;
+    @Getter
     @Setter
-    private NodeType sourceServiceNodeType;
+    private Layer sourceServiceLayer;
     @Getter
     @Setter
     @ScopeDefaultColumn.DefinedByField(columnName = "source_service_instance_name", requireDynamicActive = true)
@@ -68,8 +69,9 @@ public class ServiceInstanceRelation extends Source {
     private String destServiceInstanceId;
     @Getter
     private String destServiceId;
+    @Getter
     @Setter
-    private NodeType destServiceNodeType;
+    private Layer destServiceLayer;
     @Getter
     @Setter
     @ScopeDefaultColumn.DefinedByField(columnName = "dest_service_name", requireDynamicActive = true)
@@ -112,14 +114,11 @@ public class ServiceInstanceRelation extends Source {
     @Getter
     @Setter
     private SideCar sideCar = new SideCar();
-    @Getter
-    @Setter
-    private TCPInfo tcpInfo = new TCPInfo();
 
     @Override
     public void prepare() {
-        sourceServiceId = IDManager.ServiceID.buildId(sourceServiceName, sourceServiceNodeType);
-        destServiceId = IDManager.ServiceID.buildId(destServiceName, destServiceNodeType);
+        sourceServiceId = IDManager.ServiceID.buildId(sourceServiceName, sourceServiceLayer.isNormal());
+        destServiceId = IDManager.ServiceID.buildId(destServiceName, destServiceLayer.isNormal());
         sourceServiceInstanceId = IDManager.ServiceInstanceID.buildId(sourceServiceId, sourceServiceInstanceName);
         destServiceInstanceId = IDManager.ServiceInstanceID.buildId(destServiceId, destServiceInstanceName);
     }

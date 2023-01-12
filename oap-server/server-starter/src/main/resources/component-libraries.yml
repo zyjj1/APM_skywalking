@@ -28,10 +28,21 @@
 # languages
 # ######
 # Languages declare which languages are using this component. Multi languages should be separated by `,`
+#
+# ######
+# priority
+# ######
+# Component ID priority represents the component is degree of closeness between the library and business codes
+# The higher the atomic number, the higher the priority, which mean it is closer to the business codes,
+# further away from OS kernel or general Computer Science concept.
+# The range of priorities is [0, 100], both sided included. 0 is the highest priority.
+# To keep forward compatibility, the default(when not set) priority is 50.
+# For example, a typical priority sequence is TCP < TLS(TCP) < RPC < HTTP < HTTPS < gRPC/SpringMVC/Dubbo
 
 Unknown:
   id: 0
   language: All
+  priority: 0
 Tomcat:
   id: 1
   languages: Java
@@ -74,9 +85,11 @@ SpringRestTemplate:
 SpringMVC:
   id: 14
   languages: Java
+  priority: 60
 Struts2:
   id: 15
   languages: Java
+  priority: 60
 NutzMVC:
   id: 16
   languages: Java
@@ -179,9 +192,11 @@ transport-client:
 http:
   id: 49
   languages: Java,C#,Node.js
+  priority: 45
 rpc:
   id: 50
   languages: Java,C#,Node.js
+  priority: 20
 RabbitMQ:
   id: 51
   languages: Java
@@ -362,6 +377,7 @@ MyBatis:
 tcp:
   id: 110
   languages: Java
+  priority: 10
 AzureHttpTrigger:
   id: 111
   languages: Java,C#,Node.js,Python
@@ -397,6 +413,65 @@ Apache-Kylin-jdbc-driver:
   languages: Java
 Apache-Kylin:
   id: 122
+  languages: Java
+GuavaEventBus:
+  id: 123
+  languages: Java
+AWSLambdaTrigger:
+  id: 124
+  languages: Java,C#,Node.js,Python
+AWSLambdaGatewayAPIHTTP:
+  id: 125
+  languages: Java,C#,Node.js,Python
+AWSLambdaGatewayAPIREST:
+  id: 126
+  languages: Java,C#,Node.js,Python
+Apache-ShenYu:
+  id: 127
+  languages: Java
+Hutool:
+  id: 128
+  languages: Java
+https:
+  id: 129
+  languages: ebpf
+  priority: 46
+tls:
+  id: 130
+  languages: ebpf
+  priority: 11
+Micronaut:
+  id: 131
+  languages: Java
+NATS:
+  id: 132
+  languages: Java
+Impala-jdbc-driver:
+  id: 133
+  languages: Java
+Impala:
+  id: 134
+  languages: Java
+EventMesh:
+  id: 135
+  languages: Java
+eventmesh-producer:
+  id: 136
+  languages: Java
+eventmesh-consumer:
+  id: 137
+  languages: Java
+AWSDynamoDB:
+  id: 138
+  languages: Java,C#,Node.js,Python
+AWSSNS:
+  id: 139
+  languages: Java,C#,Node.js,Python
+AWSSQS:
+  id: 140
+  languages: Java,C#,Node.js,Python
+Micrometer:
+  id: 141
   languages: Java
 
 # .NET/.NET Core components
@@ -448,6 +523,9 @@ AspNet:
   languages: C#
 SmartSql:
   id: 3016
+  languages: C#
+FreeSql:
+  id: 3017
   languages: C#
 
 # NoeJS components
@@ -506,6 +584,9 @@ Kratos:
 GoMysql:
   id: 5012
   languages: Golang
+OpenFunction:
+  id: 5013
+  languages: Golang,Node.js,Python,Java
 
 # Lua components
 # [6000, 7000) for Lua agent
@@ -559,6 +640,21 @@ Celery:
 Falcon:
   id: 7012
   languages: Python
+MysqlClient:
+  id: 7013
+  languages: Python
+FastAPI:
+  id: 7014
+  languages: Python
+Bottle:
+  id: 7015
+  languages: Python
+AsyncPG:
+  id: 7016
+  languages: Python
+AIORedis:
+  id: 7017
+  languages: Python
 
 # PHP components
 # [8000, 9000) for PHP agent
@@ -595,6 +691,12 @@ JavaScript:
 ajax:
   id: 10001
   languages: JavaScript
+
+# Rust components
+# [11000, 12000) for Rust agent
+Rust:
+  id: 11000
+  languages: Rust
 
 # Component Server mapping defines the server display names of some components
 # e.g.
@@ -644,3 +746,9 @@ Component-Server-Mappings:
   GoMysql: Mysql
   ClickHouse-jdbc-driver: ClickHouse
   Apache-Kylin-jdbc-driver: Apache-Kylin
+  MysqlClient: Mysql
+  AsyncPG: PostgreSQL
+  AIORedis: Redis
+  Impala-jdbc-driver: Impala
+  eventmesh-producer: EventMesh
+  eventmesh-consumer: EventMesh

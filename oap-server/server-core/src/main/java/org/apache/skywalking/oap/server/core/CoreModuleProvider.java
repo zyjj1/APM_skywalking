@@ -18,8 +18,6 @@
 
 package org.apache.skywalking.oap.server.core;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import org.apache.skywalking.oap.server.configuration.api.ConfigurationModule;
@@ -30,15 +28,14 @@ import org.apache.skywalking.oap.server.core.analysis.StreamAnnotationListener;
 import org.apache.skywalking.oap.server.core.analysis.meter.MeterEntity;
 import org.apache.skywalking.oap.server.core.analysis.meter.MeterSystem;
 import org.apache.skywalking.oap.server.core.analysis.metrics.ApdexMetrics;
-import org.apache.skywalking.oap.server.core.analysis.worker.ManagementStreamProcessor;
 import org.apache.skywalking.oap.server.core.analysis.worker.MetricsStreamProcessor;
 import org.apache.skywalking.oap.server.core.analysis.worker.TopNStreamProcessor;
 import org.apache.skywalking.oap.server.core.annotation.AnnotationScan;
 import org.apache.skywalking.oap.server.core.cache.CacheUpdateTimer;
 import org.apache.skywalking.oap.server.core.cache.NetworkAddressAliasCache;
 import org.apache.skywalking.oap.server.core.cache.ProfileTaskCache;
+import org.apache.skywalking.oap.server.core.cluster.ClusterCoordinator;
 import org.apache.skywalking.oap.server.core.cluster.ClusterModule;
-import org.apache.skywalking.oap.server.core.cluster.ClusterRegister;
 import org.apache.skywalking.oap.server.core.cluster.OAPNodeChecker;
 import org.apache.skywalking.oap.server.core.cluster.RemoteInstance;
 import org.apache.skywalking.oap.server.core.command.CommandService;
@@ -55,7 +52,10 @@ import org.apache.skywalking.oap.server.core.management.ui.template.UITemplateIn
 import org.apache.skywalking.oap.server.core.management.ui.template.UITemplateManagementService;
 import org.apache.skywalking.oap.server.core.oal.rt.DisableOALDefine;
 import org.apache.skywalking.oap.server.core.oal.rt.OALEngineLoaderService;
-import org.apache.skywalking.oap.server.core.profile.ProfileTaskMutationService;
+import org.apache.skywalking.oap.server.core.profiling.ebpf.EBPFProfilingMutationService;
+import org.apache.skywalking.oap.server.core.profiling.ebpf.EBPFProfilingQueryService;
+import org.apache.skywalking.oap.server.core.profiling.trace.ProfileTaskMutationService;
+import org.apache.skywalking.oap.server.core.profiling.trace.ProfileTaskQueryService;
 import org.apache.skywalking.oap.server.core.query.AggregationQueryService;
 import org.apache.skywalking.oap.server.core.query.AlarmQueryService;
 import org.apache.skywalking.oap.server.core.query.BrowserLogQueryService;
@@ -64,7 +64,8 @@ import org.apache.skywalking.oap.server.core.query.LogQueryService;
 import org.apache.skywalking.oap.server.core.query.MetadataQueryService;
 import org.apache.skywalking.oap.server.core.query.MetricsMetadataQueryService;
 import org.apache.skywalking.oap.server.core.query.MetricsQueryService;
-import org.apache.skywalking.oap.server.core.query.ProfileTaskQueryService;
+import org.apache.skywalking.oap.server.core.query.RecordQueryService;
+import org.apache.skywalking.oap.server.core.query.TagAutoCompleteQueryService;
 import org.apache.skywalking.oap.server.core.query.TopNRecordsQueryService;
 import org.apache.skywalking.oap.server.core.query.TopologyQueryService;
 import org.apache.skywalking.oap.server.core.query.TraceQueryService;
@@ -75,11 +76,12 @@ import org.apache.skywalking.oap.server.core.remote.client.RemoteClientManager;
 import org.apache.skywalking.oap.server.core.remote.health.HealthCheckServiceHandler;
 import org.apache.skywalking.oap.server.core.server.GRPCHandlerRegister;
 import org.apache.skywalking.oap.server.core.server.GRPCHandlerRegisterImpl;
-import org.apache.skywalking.oap.server.core.server.JettyHandlerRegister;
-import org.apache.skywalking.oap.server.core.server.JettyHandlerRegisterImpl;
+import org.apache.skywalking.oap.server.core.server.HTTPHandlerRegister;
+import org.apache.skywalking.oap.server.core.server.HTTPHandlerRegisterImpl;
 import org.apache.skywalking.oap.server.core.source.DefaultScopeDefine;
 import org.apache.skywalking.oap.server.core.source.SourceReceiver;
 import org.apache.skywalking.oap.server.core.source.SourceReceiverImpl;
+import org.apache.skywalking.oap.server.core.status.ServerStatusService;
 import org.apache.skywalking.oap.server.core.storage.PersistenceTimer;
 import org.apache.skywalking.oap.server.core.storage.StorageException;
 import org.apache.skywalking.oap.server.core.storage.model.IModelManager;
@@ -90,16 +92,14 @@ import org.apache.skywalking.oap.server.core.storage.ttl.DataTTLKeeperTimer;
 import org.apache.skywalking.oap.server.core.worker.IWorkerInstanceGetter;
 import org.apache.skywalking.oap.server.core.worker.IWorkerInstanceSetter;
 import org.apache.skywalking.oap.server.core.worker.WorkerInstancesService;
-import org.apache.skywalking.oap.server.library.module.ModuleConfig;
 import org.apache.skywalking.oap.server.library.module.ModuleDefine;
 import org.apache.skywalking.oap.server.library.module.ModuleProvider;
 import org.apache.skywalking.oap.server.library.module.ModuleStartException;
 import org.apache.skywalking.oap.server.library.module.ServiceNotProvidedException;
 import org.apache.skywalking.oap.server.library.server.ServerException;
 import org.apache.skywalking.oap.server.library.server.grpc.GRPCServer;
-import org.apache.skywalking.oap.server.library.server.jetty.JettyServer;
-import org.apache.skywalking.oap.server.library.server.jetty.JettyServerConfig;
-import org.apache.skywalking.oap.server.library.util.ResourceUtils;
+import org.apache.skywalking.oap.server.library.server.http.HTTPServer;
+import org.apache.skywalking.oap.server.library.server.http.HTTPServerConfig;
 import org.apache.skywalking.oap.server.telemetry.TelemetryModule;
 import org.apache.skywalking.oap.server.telemetry.api.TelemetryRelatedContext;
 
@@ -107,15 +107,15 @@ import org.apache.skywalking.oap.server.telemetry.api.TelemetryRelatedContext;
  * Core module provider includes the recommended and default implementations of {@link CoreModule#services()}. All
  * services with these default implementations are widely used including data receiver, data analysis, streaming
  * process, storage and query.
- *
- * NOTICE. In our experiences, no one should re-implement the core module service implementations, unless we are very
+ * <p>
+ * NOTICE: In our experience, no one should re-implement the core module service implementations, unless they are very
  * familiar with all mechanisms of SkyWalking.
  */
 public class CoreModuleProvider extends ModuleProvider {
 
-    private final CoreModuleConfig moduleConfig;
+    private CoreModuleConfig moduleConfig;
     private GRPCServer grpcServer;
-    private JettyServer jettyServer;
+    private HTTPServer httpServer;
     private RemoteClientManager remoteClientManager;
     private final AnnotationScan annotationScan;
     private final StorageModels storageModels;
@@ -128,7 +128,6 @@ public class CoreModuleProvider extends ModuleProvider {
 
     public CoreModuleProvider() {
         super();
-        this.moduleConfig = new CoreModuleConfig();
         this.annotationScan = new AnnotationScan();
         this.storageModels = new StorageModels();
         this.receiver = new SourceReceiverImpl();
@@ -145,8 +144,18 @@ public class CoreModuleProvider extends ModuleProvider {
     }
 
     @Override
-    public ModuleConfig createConfigBeanIfAbsent() {
-        return moduleConfig;
+    public ConfigCreator newConfigCreator() {
+        return new ConfigCreator<CoreModuleConfig>() {
+            @Override
+            public Class type() {
+                return CoreModuleConfig.class;
+            }
+
+            @Override
+            public void onInitialized(final CoreModuleConfig initialized) {
+                moduleConfig = initialized;
+            }
+        };
     }
 
     @Override
@@ -217,31 +226,32 @@ public class CoreModuleProvider extends ModuleProvider {
         }
         grpcServer.initialize();
 
-        JettyServerConfig jettyServerConfig = JettyServerConfig.builder()
-                                                               .host(moduleConfig.getRestHost())
-                                                               .port(moduleConfig.getRestPort())
-                                                               .contextPath(moduleConfig.getRestContextPath())
-                                                               .jettyIdleTimeOut(moduleConfig.getRestIdleTimeOut())
-                                                               .jettyAcceptorPriorityDelta(
-                                                                   moduleConfig.getRestAcceptorPriorityDelta())
-                                                               .jettyMinThreads(moduleConfig.getRestMinThreads())
-                                                               .jettyMaxThreads(moduleConfig.getRestMaxThreads())
-                                                               .jettyAcceptQueueSize(
-                                                                   moduleConfig.getRestAcceptQueueSize())
-                                                               .jettyHttpMaxRequestHeaderSize(
-                                                                   moduleConfig.getHttpMaxRequestHeaderSize())
-                                                               .build();
-        jettyServer = new JettyServer(jettyServerConfig);
-        jettyServer.initialize();
+        HTTPServerConfig httpServerConfig = HTTPServerConfig.builder()
+                                                            .host(moduleConfig.getRestHost())
+                                                            .port(moduleConfig.getRestPort())
+                                                            .contextPath(moduleConfig.getRestContextPath())
+                                                            .idleTimeOut(moduleConfig.getRestIdleTimeOut())
+                                                            .maxThreads(moduleConfig.getRestMaxThreads())
+                                                            .acceptQueueSize(
+                                                                moduleConfig.getRestAcceptQueueSize())
+                                                            .maxRequestHeaderSize(
+                                                                moduleConfig.getHttpMaxRequestHeaderSize())
+                                                            .build();
+        httpServer = new HTTPServer(httpServerConfig);
+        httpServer.initialize();
 
         this.registerServiceImplementation(ConfigService.class, new ConfigService(moduleConfig));
+        this.registerServiceImplementation(ServerStatusService.class, new ServerStatusService(getManager()));
         this.registerServiceImplementation(
             DownSamplingConfigService.class, new DownSamplingConfigService(moduleConfig.getDownsampling()));
 
         this.registerServiceImplementation(GRPCHandlerRegister.class, new GRPCHandlerRegisterImpl(grpcServer));
-        this.registerServiceImplementation(JettyHandlerRegister.class, new JettyHandlerRegisterImpl(jettyServer));
+        this.registerServiceImplementation(HTTPHandlerRegister.class, new HTTPHandlerRegisterImpl(httpServer));
 
-        this.registerServiceImplementation(IComponentLibraryCatalogService.class, new ComponentLibraryCatalogService());
+        this.registerServiceImplementation(
+            IComponentLibraryCatalogService.class,
+            ComponentLibraryCatalogUtil.hold(new ComponentLibraryCatalogService())
+        );
 
         this.registerServiceImplementation(SourceReceiver.class, receiver);
 
@@ -257,7 +267,8 @@ public class CoreModuleProvider extends ModuleProvider {
         this.registerServiceImplementation(
             NetworkAddressAliasCache.class, new NetworkAddressAliasCache(moduleConfig));
 
-        this.registerServiceImplementation(TopologyQueryService.class, new TopologyQueryService(getManager()));
+        this.registerServiceImplementation(
+            TopologyQueryService.class, new TopologyQueryService(getManager(), storageModels));
         this.registerServiceImplementation(MetricsMetadataQueryService.class, new MetricsMetadataQueryService());
         this.registerServiceImplementation(MetricsQueryService.class, new MetricsQueryService(getManager()));
         this.registerServiceImplementation(TraceQueryService.class, new TraceQueryService(getManager()));
@@ -268,6 +279,9 @@ public class CoreModuleProvider extends ModuleProvider {
         this.registerServiceImplementation(AlarmQueryService.class, new AlarmQueryService(getManager()));
         this.registerServiceImplementation(TopNRecordsQueryService.class, new TopNRecordsQueryService(getManager()));
         this.registerServiceImplementation(EventQueryService.class, new EventQueryService(getManager()));
+        this.registerServiceImplementation(
+            TagAutoCompleteQueryService.class, new TagAutoCompleteQueryService(getManager(), moduleConfig));
+        this.registerServiceImplementation(RecordQueryService.class, new RecordQueryService(getManager()));
 
         // add profile service implementations
         this.registerServiceImplementation(
@@ -275,6 +289,13 @@ public class CoreModuleProvider extends ModuleProvider {
         this.registerServiceImplementation(
             ProfileTaskQueryService.class, new ProfileTaskQueryService(getManager(), moduleConfig));
         this.registerServiceImplementation(ProfileTaskCache.class, new ProfileTaskCache(getManager(), moduleConfig));
+
+        this.registerServiceImplementation(
+            EBPFProfilingMutationService.class, new EBPFProfilingMutationService(getManager()));
+        this.registerServiceImplementation(
+            EBPFProfilingQueryService.class,
+            new EBPFProfilingQueryService(getManager(), moduleConfig, this.storageModels)
+        );
 
         this.registerServiceImplementation(CommandService.class, new CommandService(getManager()));
 
@@ -307,7 +328,6 @@ public class CoreModuleProvider extends ModuleProvider {
         }
 
         final MetricsStreamProcessor metricsStreamProcessor = MetricsStreamProcessor.getInstance();
-        metricsStreamProcessor.setEnableDatabaseSession(moduleConfig.isEnableDatabaseSession());
         metricsStreamProcessor.setL1FlushPeriod(moduleConfig.getL1FlushPeriod());
         metricsStreamProcessor.setStorageSessionTimeout(moduleConfig.getStorageSessionTimeout());
         metricsStreamProcessor.setMetricsDataTTL(moduleConfig.getMetricsDataTTL());
@@ -321,7 +341,6 @@ public class CoreModuleProvider extends ModuleProvider {
     public void start() throws ModuleStartException {
         grpcServer.addHandler(new RemoteServiceHandler(getManager()));
         grpcServer.addHandler(new HealthCheckServiceHandler());
-        remoteClientManager.start();
 
         // Disable OAL script has higher priority
         oalEngineLoaderService.load(DisableOALDefine.INSTANCE);
@@ -335,6 +354,12 @@ public class CoreModuleProvider extends ModuleProvider {
 
         Address gRPCServerInstanceAddress = new Address(moduleConfig.getGRPCHost(), moduleConfig.getGRPCPort(), true);
         TelemetryRelatedContext.INSTANCE.setId(gRPCServerInstanceAddress.toString());
+        ClusterCoordinator coordinator = this.getManager()
+                                             .find(ClusterModule.NAME)
+                                             .provider()
+                                             .getService(ClusterCoordinator.class);
+        coordinator.registerWatcher(remoteClientManager);
+        coordinator.start();
         if (CoreModuleConfig.Role.Mixed.name()
                                        .equalsIgnoreCase(
                                            moduleConfig.getRole())
@@ -342,11 +367,7 @@ public class CoreModuleProvider extends ModuleProvider {
                                                .equalsIgnoreCase(
                                                    moduleConfig.getRole())) {
             RemoteInstance gRPCServerInstance = new RemoteInstance(gRPCServerInstanceAddress);
-            this.getManager()
-                .find(ClusterModule.NAME)
-                .provider()
-                .getService(ClusterRegister.class)
-                .registerRemote(gRPCServerInstance);
+            coordinator.registerRemote(gRPCServerInstance);
         }
 
         OAPNodeChecker.setROLE(CoreModuleConfig.Role.fromName(moduleConfig.getRole()));
@@ -367,11 +388,11 @@ public class CoreModuleProvider extends ModuleProvider {
     public void notifyAfterCompleted() throws ModuleStartException {
         try {
             grpcServer.start();
-            jettyServer.start();
+            httpServer.start();
         } catch (ServerException e) {
             throw new ModuleStartException(e.getMessage(), e);
         }
-
+        remoteClientManager.start();
         PersistenceTimer.INSTANCE.start(getManager(), moduleConfig);
 
         if (moduleConfig.isEnableDataKeeperExecutor()) {
@@ -381,19 +402,8 @@ public class CoreModuleProvider extends ModuleProvider {
         CacheUpdateTimer.INSTANCE.start(getManager(), moduleConfig.getMetricsDataTTL());
 
         try {
-            final File[] templateFiles = ResourceUtils.getPathFiles("ui-initialized-templates");
-            for (final File templateFile : templateFiles) {
-                if (!templateFile.getName().endsWith(".yml") && !templateFile.getName().endsWith(".yaml")) {
-                    continue;
-                }
-                new UITemplateInitializer(new FileInputStream(templateFile))
-                    .read()
-                    .forEach(uiTemplate -> {
-                        ManagementStreamProcessor.getInstance().in(uiTemplate);
-                    });
-            }
-
-        } catch (FileNotFoundException e) {
+            new UITemplateInitializer(getManager()).initAll();
+        } catch (IOException e) {
             throw new ModuleStartException(e.getMessage(), e);
         }
     }

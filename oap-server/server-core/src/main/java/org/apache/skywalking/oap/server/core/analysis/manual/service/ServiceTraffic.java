@@ -18,23 +18,29 @@
 
 package org.apache.skywalking.oap.server.core.analysis.manual.service;
 
-import java.util.HashMap;
-import java.util.Map;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.skywalking.oap.server.core.Const;
 import org.apache.skywalking.oap.server.core.analysis.IDManager;
+import org.apache.skywalking.oap.server.core.analysis.Layer;
 import org.apache.skywalking.oap.server.core.analysis.MetricsExtension;
-import org.apache.skywalking.oap.server.core.analysis.NodeType;
 import org.apache.skywalking.oap.server.core.analysis.Stream;
 import org.apache.skywalking.oap.server.core.analysis.metrics.Metrics;
 import org.apache.skywalking.oap.server.core.analysis.worker.MetricsStreamProcessor;
 import org.apache.skywalking.oap.server.core.remote.grpc.proto.RemoteData;
 import org.apache.skywalking.oap.server.core.source.DefaultScopeDefine;
-import org.apache.skywalking.oap.server.core.storage.StorageHashMapBuilder;
+import org.apache.skywalking.oap.server.core.storage.ShardingAlgorithm;
+import org.apache.skywalking.oap.server.core.storage.StorageID;
+import org.apache.skywalking.oap.server.core.storage.annotation.BanyanDB;
 import org.apache.skywalking.oap.server.core.storage.annotation.Column;
+import org.apache.skywalking.oap.server.core.storage.annotation.ElasticSearch;
+import org.apache.skywalking.oap.server.core.storage.annotation.SQLDatabase;
+import org.apache.skywalking.oap.server.core.storage.type.Convert2Entity;
+import org.apache.skywalking.oap.server.core.storage.type.Convert2Storage;
+import org.apache.skywalking.oap.server.core.storage.type.StorageBuilder;
 
+import static org.apache.logging.log4j.util.Base64Util.encode;
 import static org.apache.skywalking.oap.server.core.Const.DOUBLE_COLONS_SPLIT;
 
 @Stream(name = ServiceTraffic.INDEX_NAME, scopeId = DefaultScopeDefine.SERVICE,
@@ -42,33 +48,72 @@ import static org.apache.skywalking.oap.server.core.Const.DOUBLE_COLONS_SPLIT;
 @MetricsExtension(supportDownSampling = false, supportUpdate = false)
 @EqualsAndHashCode(of = {
     "name",
-    "nodeType"
+    "layer"
 })
+@SQLDatabase.Sharding(shardingAlgorithm = ShardingAlgorithm.NO_SHARDING)
 public class ServiceTraffic extends Metrics {
     public static final String INDEX_NAME = "service_traffic";
 
     public static final String NAME = "name";
-    public static final String NODE_TYPE = "node_type";
+
+    public static final String SHORT_NAME = "short_name";
+
+    public static final String SERVICE_ID = "service_id";
+
     public static final String GROUP = "service_group";
+
+    public static final String LAYER = "layer";
 
     @Setter
     @Getter
-    @Column(columnName = NAME, matchQuery = true)
+    @Column(columnName = NAME)
+    @ElasticSearch.MatchQuery
+    @ElasticSearch.Column(columnAlias = "service_traffic_name")
+    @BanyanDB.SeriesID(index = 1)
     private String name = Const.EMPTY_STRING;
 
     @Setter
     @Getter
-    @Column(columnName = NODE_TYPE)
-    private NodeType nodeType;
+    @Column(columnName = SHORT_NAME)
+    private String shortName = Const.EMPTY_STRING;
+
+    /**
+     * `normal` Base64 encode(serviceName) + ".1" `un-normal` Base64 encode(serviceName) + ".0"
+     */
+    @Setter
+    @Column(columnName = SERVICE_ID)
+    private String serviceId;
 
     @Setter
     @Getter
     @Column(columnName = GROUP)
     private String group;
 
+    @Setter
+    @Getter
+    @Column(columnName = LAYER)
+    @BanyanDB.SeriesID(index = 0)
+    private Layer layer = Layer.UNDEFINED;
+
+    /**
+     * Primary key(id), to identify a service with different layers, a service could have more than one layer and be
+     * saved as different records.
+     *
+     * @return Base64 encode(serviceName) + "." + layer.value
+     */
     @Override
-    protected String id0() {
-        return IDManager.ServiceID.buildId(name, nodeType);
+    protected StorageID id0() {
+        String id;
+        if (layer != null) {
+            id = encode(name) + Const.POINT + layer.value();
+        } else {
+            id = encode(name) + Const.POINT + Layer.UNDEFINED.value();
+        }
+        return new StorageID().appendMutant(new String[] {
+            NAME,
+            LAYER
+        }, id);
+
     }
 
     @Override
@@ -79,8 +124,7 @@ public class ServiceTraffic extends Metrics {
     @Override
     public void deserialize(final RemoteData remoteData) {
         setName(remoteData.getDataStrings(0));
-        setNodeType(NodeType.valueOf(remoteData.getDataIntegers(0)));
-        // Time bucket is not a part of persistent, but still is required in the first time insert.
+        setLayer(Layer.valueOf(remoteData.getDataIntegers(0)));
         setTimeBucket(remoteData.getDataLongs(0));
     }
 
@@ -88,37 +132,46 @@ public class ServiceTraffic extends Metrics {
     public RemoteData.Builder serialize() {
         final RemoteData.Builder builder = RemoteData.newBuilder();
         builder.addDataStrings(name);
-        builder.addDataIntegers(nodeType.value());
-        // Time bucket is not a part of persistent, but still is required in the first time insert.
+        builder.addDataIntegers(layer.value());
         builder.addDataLongs(getTimeBucket());
         return builder;
     }
 
-    public static class Builder implements StorageHashMapBuilder<ServiceTraffic> {
-
+    public static class Builder implements StorageBuilder<ServiceTraffic> {
         @Override
-        public ServiceTraffic storage2Entity(final Map<String, Object> dbMap) {
+        public ServiceTraffic storage2Entity(final Convert2Entity converter) {
             ServiceTraffic serviceTraffic = new ServiceTraffic();
-            serviceTraffic.setName((String) dbMap.get(NAME));
-            serviceTraffic.setNodeType(NodeType.valueOf(((Number) dbMap.get(NODE_TYPE)).intValue()));
-            serviceTraffic.setGroup((String) dbMap.get(GROUP));
+            serviceTraffic.setName((String) converter.get(NAME));
+            serviceTraffic.setShortName((String) converter.get(SHORT_NAME));
+            serviceTraffic.setGroup((String) converter.get(GROUP));
+            if (converter.get(LAYER) != null) {
+                serviceTraffic.setLayer(Layer.valueOf(((Number) converter.get(LAYER)).intValue()));
+            } else {
+                serviceTraffic.setLayer(Layer.UNDEFINED);
+            }
+            // TIME_BUCKET column could be null in old implementation, which is fixed in 8.9.0
+            if (converter.get(TIME_BUCKET) != null) {
+                serviceTraffic.setTimeBucket(((Number) converter.get(TIME_BUCKET)).longValue());
+            }
             return serviceTraffic;
         }
 
         @Override
-        public Map<String, Object> entity2Storage(final ServiceTraffic storageData) {
+        public void entity2Storage(final ServiceTraffic storageData, final Convert2Storage converter) {
             final String serviceName = storageData.getName();
-            if (NodeType.Normal.equals(storageData.getNodeType())) {
-                int groupIdx = serviceName.indexOf(DOUBLE_COLONS_SPLIT);
-                if (groupIdx > 0) {
-                    storageData.setGroup(serviceName.substring(0, groupIdx));
-                }
+            storageData.setShortName(serviceName);
+            int groupIdx = serviceName.indexOf(DOUBLE_COLONS_SPLIT);
+            if (groupIdx > 0) {
+                storageData.setGroup(serviceName.substring(0, groupIdx));
+                storageData.setShortName(serviceName.substring(groupIdx + 2));
             }
-            Map<String, Object> map = new HashMap<>();
-            map.put(NAME, serviceName);
-            map.put(NODE_TYPE, storageData.getNodeType().value());
-            map.put(GROUP, storageData.getGroup());
-            return map;
+            converter.accept(NAME, serviceName);
+            converter.accept(SHORT_NAME, storageData.getShortName());
+            converter.accept(SERVICE_ID, storageData.getServiceId());
+            converter.accept(GROUP, storageData.getGroup());
+            Layer layer = storageData.getLayer();
+            converter.accept(LAYER, layer != null ? layer.value() : Layer.UNDEFINED.value());
+            converter.accept(TIME_BUCKET, storageData.getTimeBucket());
         }
     }
 
@@ -140,6 +193,13 @@ public class ServiceTraffic extends Metrics {
     @Override
     public Metrics toDay() {
         return null;
+    }
+
+    public String getServiceId() {
+        if (serviceId == null) {
+            serviceId = IDManager.ServiceID.buildId(name, layer.isNormal());
+        }
+        return serviceId;
     }
 }
 

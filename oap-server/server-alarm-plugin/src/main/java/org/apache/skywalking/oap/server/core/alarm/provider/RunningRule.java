@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.skywalking.apm.util.StringUtil;
+import org.apache.skywalking.oap.server.library.util.StringUtil;
 import org.apache.skywalking.oap.server.core.alarm.AlarmMessage;
 import org.apache.skywalking.oap.server.core.alarm.MetaInAlarm;
 import org.apache.skywalking.oap.server.core.analysis.manual.searchtag.Tag;
@@ -222,7 +222,9 @@ public class RunningRule {
      * @param targetTime of moving target
      */
     public void moveTo(LocalDateTime targetTime) {
-        windows.values().forEach(window -> window.moveTo(targetTime));
+        // Truncate targetTime to minute, make sure the second is `00` and milliseconds is `00` such as: 18:30:00.000
+        final LocalDateTime target = targetTime.withSecondOfMinute(0).withMillisOfSecond(0);
+        windows.values().forEach(window -> window.moveTo(target));
     }
 
     /**

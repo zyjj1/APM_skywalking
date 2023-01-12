@@ -21,4 +21,4 @@ FROM alpine:3.10
 COPY --from=base /skywalking-satellite /sw-satellite
 COPY --from=base /skywalking/configs /skywalking/
 
-ENTRYPOINT ["/sw-satellite", "start", "--config", "/skywalking/configs/satellite_config.yaml"]
+ENTRYPOINT ["/sw-satellite", "start", "--config", "/skywalking/satellite_config.yaml"]

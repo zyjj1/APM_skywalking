@@ -18,15 +18,13 @@
 
 package org.apache.skywalking.oap.server.core.analysis.meter.function.avg;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.skywalking.oap.server.core.Const;
 import org.apache.skywalking.oap.server.core.UnexpectedException;
+import org.apache.skywalking.oap.server.core.analysis.meter.Meter;
 import org.apache.skywalking.oap.server.core.analysis.meter.MeterEntity;
 import org.apache.skywalking.oap.server.core.analysis.meter.function.AcceptableValue;
 import org.apache.skywalking.oap.server.core.analysis.meter.function.BucketedValues;
@@ -35,24 +33,28 @@ import org.apache.skywalking.oap.server.core.analysis.metrics.DataTable;
 import org.apache.skywalking.oap.server.core.analysis.metrics.Metrics;
 import org.apache.skywalking.oap.server.core.query.type.Bucket;
 import org.apache.skywalking.oap.server.core.remote.grpc.proto.RemoteData;
-import org.apache.skywalking.oap.server.core.storage.StorageHashMapBuilder;
+import org.apache.skywalking.oap.server.core.storage.StorageID;
+import org.apache.skywalking.oap.server.core.storage.annotation.BanyanDB;
 import org.apache.skywalking.oap.server.core.storage.annotation.Column;
+import org.apache.skywalking.oap.server.core.storage.annotation.ElasticSearch;
+import org.apache.skywalking.oap.server.core.storage.type.Convert2Entity;
+import org.apache.skywalking.oap.server.core.storage.type.Convert2Storage;
+import org.apache.skywalking.oap.server.core.storage.type.StorageBuilder;
 
 /**
- * AvgHistogram intends to aggregate raw values over the interval (minute, hour or day). When users query a value
- * from such a interval, an average over it will be sent back.
+ * AvgHistogram intends to aggregate raw values over the interval (minute, hour or day). When users query a value from
+ * such a interval, an average over it will be sent back.
  *
- * The acceptable bucket value should be a result from one of "increase", "rate" and "irate" query functions.
- * That means the value is the increase or per-second instant rate of increase in a specific range.
+ * The acceptable bucket value should be a result from one of "increase", "rate" and "irate" query functions. That means
+ * the value is the increase or per-second instant rate of increase in a specific range.
  *
- * Example:
- * "persistence_timer_bulk_execute_latency" is histogram, the possible PromQL format of acceptable bucket value should be:
- * "increase(persistence_timer_bulk_execute_latency{service="oap-server", instance="localhost:1234"}[5m])"
+ * Example: "persistence_timer_bulk_execute_latency" is histogram, the possible PromQL format of acceptable bucket value
+ * should be: "increase(persistence_timer_bulk_execute_latency{service="oap-server", instance="localhost:1234"}[5m])"
  */
 @MeterFunction(functionName = "avgHistogram")
 @Slf4j
 @ToString
-public abstract class AvgHistogramFunction extends Metrics implements AcceptableValue<BucketedValues> {
+public abstract class AvgHistogramFunction extends Meter implements AcceptableValue<BucketedValues> {
     public static final String DATASET = "dataset";
     protected static final String SUMMATION = "summation";
     protected static final String COUNT = "count";
@@ -60,18 +62,24 @@ public abstract class AvgHistogramFunction extends Metrics implements Acceptable
     @Setter
     @Getter
     @Column(columnName = ENTITY_ID, length = 512)
+    @BanyanDB.SeriesID(index = 0)
     private String entityId;
     @Getter
     @Setter
     @Column(columnName = SUMMATION, storageOnly = true)
+    @ElasticSearch.Column(columnAlias = "datatable_summation")
+    @BanyanDB.MeasureField
     protected DataTable summation = new DataTable(30);
     @Getter
     @Setter
     @Column(columnName = COUNT, storageOnly = true)
+    @ElasticSearch.Column(columnAlias = "datatable_count")
+    @BanyanDB.MeasureField
     protected DataTable count = new DataTable(30);
     @Getter
     @Setter
     @Column(columnName = DATASET, dataType = Column.ValueDataType.HISTOGRAM, storageOnly = true, defaultValue = 0)
+    @BanyanDB.MeasureField
     private DataTable dataset = new DataTable(30);
 
     @Override
@@ -121,8 +129,8 @@ public abstract class AvgHistogramFunction extends Metrics implements Acceptable
         AvgHistogramFunction metrics = (AvgHistogramFunction) createNew();
         metrics.setEntityId(getEntityId());
         metrics.setTimeBucket(toTimeBucketInHour());
-        metrics.setCount(getCount());
-        metrics.setSummation(getSummation());
+        metrics.getSummation().copyFrom(getSummation());
+        metrics.getCount().copyFrom(getCount());
         return metrics;
     }
 
@@ -131,8 +139,8 @@ public abstract class AvgHistogramFunction extends Metrics implements Acceptable
         AvgHistogramFunction metrics = (AvgHistogramFunction) createNew();
         metrics.setEntityId(getEntityId());
         metrics.setTimeBucket(toTimeBucketInDay());
-        metrics.setCount(getCount());
-        metrics.setSummation(getSummation());
+        metrics.getSummation().copyFrom(getSummation());
+        metrics.getCount().copyFrom(getCount());
         return metrics;
     }
 
@@ -167,8 +175,10 @@ public abstract class AvgHistogramFunction extends Metrics implements Acceptable
     }
 
     @Override
-    protected String id0() {
-        return getTimeBucket() + Const.ID_CONNECTOR + entityId;
+    protected StorageID id0() {
+        return new StorageID()
+            .append(TIME_BUCKET, getTimeBucket())
+            .append(ENTITY_ID, getEntityId());
     }
 
     @Override
@@ -176,33 +186,30 @@ public abstract class AvgHistogramFunction extends Metrics implements Acceptable
         return AvgHistogramFunctionBuilder.class;
     }
 
-    public static class AvgHistogramFunctionBuilder implements StorageHashMapBuilder<AvgHistogramFunction> {
-
+    public static class AvgHistogramFunctionBuilder implements StorageBuilder<AvgHistogramFunction> {
         @Override
-        public AvgHistogramFunction storage2Entity(final Map<String, Object> dbMap) {
+        public AvgHistogramFunction storage2Entity(final Convert2Entity converter) {
             AvgHistogramFunction metrics = new AvgHistogramFunction() {
                 @Override
                 public AcceptableValue<BucketedValues> createNew() {
                     throw new UnexpectedException("createNew should not be called");
                 }
             };
-            metrics.setDataset(new DataTable((String) dbMap.get(DATASET)));
-            metrics.setCount(new DataTable((String) dbMap.get(COUNT)));
-            metrics.setSummation(new DataTable((String) dbMap.get(SUMMATION)));
-            metrics.setTimeBucket(((Number) dbMap.get(TIME_BUCKET)).longValue());
-            metrics.setEntityId((String) dbMap.get(ENTITY_ID));
+            metrics.setDataset(new DataTable((String) converter.get(DATASET)));
+            metrics.setCount(new DataTable((String) converter.get(COUNT)));
+            metrics.setSummation(new DataTable((String) converter.get(SUMMATION)));
+            metrics.setTimeBucket(((Number) converter.get(TIME_BUCKET)).longValue());
+            metrics.setEntityId((String) converter.get(ENTITY_ID));
             return metrics;
         }
 
         @Override
-        public Map<String, Object> entity2Storage(final AvgHistogramFunction storageData) {
-            Map<String, Object> map = new HashMap<>();
-            map.put(DATASET, storageData.getDataset());
-            map.put(COUNT, storageData.getCount());
-            map.put(SUMMATION, storageData.getSummation());
-            map.put(TIME_BUCKET, storageData.getTimeBucket());
-            map.put(ENTITY_ID, storageData.getEntityId());
-            return map;
+        public void entity2Storage(final AvgHistogramFunction storageData, final Convert2Storage converter) {
+            converter.accept(DATASET, storageData.getDataset());
+            converter.accept(COUNT, storageData.getCount());
+            converter.accept(SUMMATION, storageData.getSummation());
+            converter.accept(TIME_BUCKET, storageData.getTimeBucket());
+            converter.accept(ENTITY_ID, storageData.getEntityId());
         }
     }
 

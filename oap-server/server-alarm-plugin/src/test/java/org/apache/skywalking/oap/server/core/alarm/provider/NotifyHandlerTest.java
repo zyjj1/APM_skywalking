@@ -22,6 +22,7 @@ import com.google.common.collect.Lists;
 import org.apache.skywalking.oap.server.core.CoreModule;
 import org.apache.skywalking.oap.server.core.alarm.AlarmMessage;
 import org.apache.skywalking.oap.server.core.alarm.EndpointRelationMetaInAlarm;
+import org.apache.skywalking.oap.server.core.alarm.ProcessMetaInAlarm;
 import org.apache.skywalking.oap.server.core.alarm.ServiceInstanceRelationMetaInAlarm;
 import org.apache.skywalking.oap.server.core.alarm.ServiceRelationMetaInAlarm;
 import org.apache.skywalking.oap.server.core.alarm.EndpointMetaInAlarm;
@@ -31,10 +32,10 @@ import org.apache.skywalking.oap.server.core.alarm.ServiceMetaInAlarm;
 import org.apache.skywalking.oap.server.core.analysis.IDManager;
 import org.apache.skywalking.oap.server.core.analysis.manual.endpoint.EndpointTraffic;
 import org.apache.skywalking.oap.server.core.analysis.metrics.Metrics;
+import org.apache.skywalking.oap.server.core.analysis.metrics.MetricsEntityMetaInfo;
 import org.apache.skywalking.oap.server.core.analysis.metrics.MetricsMetaInfo;
 import org.apache.skywalking.oap.server.core.analysis.metrics.WithMetadata;
 import org.apache.skywalking.oap.server.core.source.DefaultScopeDefine;
-import org.apache.skywalking.oap.server.core.analysis.NodeType;
 import org.apache.skywalking.oap.server.library.module.ModuleManager;
 import org.apache.skywalking.oap.server.library.module.ModuleProviderHolder;
 import org.apache.skywalking.oap.server.library.module.ModuleServiceHolder;
@@ -91,7 +92,7 @@ public class NotifyHandlerTest {
         when(endpointTraffic.getName()).thenReturn(endpointInventoryName);
 
         String serviceInventoryName = "service-inventory-name";
-        final String serviceId = IDManager.ServiceID.buildId(serviceInventoryName, NodeType.Normal);
+        final String serviceId = IDManager.ServiceID.buildId(serviceInventoryName, true);
         final String endpointId = IDManager.EndpointID.buildId(serviceId, endpointInventoryName);
         when(metadata.getId()).thenReturn(endpointId);
 
@@ -122,7 +123,7 @@ public class NotifyHandlerTest {
         when(DefaultScopeDefine.inServiceInstanceCatalog(0)).thenReturn(true);
 
         String instanceInventoryName = "instance-inventory-name";
-        final String serviceId = IDManager.ServiceID.buildId("service", NodeType.Normal);
+        final String serviceId = IDManager.ServiceID.buildId("service", true);
         final String instanceId = IDManager.ServiceInstanceID.buildId(serviceId, instanceInventoryName);
         when(metadata.getId()).thenReturn(instanceId);
 
@@ -148,7 +149,7 @@ public class NotifyHandlerTest {
         String metricsName = "service-metrics";
         when(metadata.getMetricsName()).thenReturn(metricsName);
         when(DefaultScopeDefine.inServiceCatalog(0)).thenReturn(true);
-        final String serviceId = IDManager.ServiceID.buildId("service", NodeType.Normal);
+        final String serviceId = IDManager.ServiceID.buildId("service", true);
         when(metadata.getId()).thenReturn(serviceId);
 
         ArgumentCaptor<MetaInAlarm> metaCaptor = ArgumentCaptor.forClass(MetaInAlarm.class);
@@ -253,6 +254,39 @@ public class NotifyHandlerTest {
         assertEquals(DefaultScopeDefine.ENDPOINT_RELATION, metaInAlarm.getScopeId());
     }
 
+    @Test
+    public void testNotifyWithProcessCatalog() {
+        prepareNotify();
+
+        String metricsName = "process-metrics";
+        String serviceName = "test-service";
+        String instanceName = "test-instance";
+        String processName = "test-process";
+        when(metadata.getMetricsName()).thenReturn(metricsName);
+        when(DefaultScopeDefine.inProcessCatalog(0)).thenReturn(true);
+        final String processId = IDManager.ProcessID.buildId(
+                IDManager.ServiceInstanceID.buildId(IDManager.ServiceID.buildId(serviceName, true), instanceName),
+                processName
+        );
+        when(metadata.getId()).thenReturn(processId);
+        when(metadata.getEntity()).thenReturn(MetricsEntityMetaInfo.buildProcess(serviceName, instanceName, processName));
+
+        ArgumentCaptor<MetaInAlarm> metaCaptor = ArgumentCaptor.forClass(MetaInAlarm.class);
+
+        notifyHandler.notify(metrics);
+        verify(rule).in(metaCaptor.capture(), any());
+
+        MetaInAlarm metaInAlarm = metaCaptor.getValue();
+
+        assertTrue(metaInAlarm instanceof ProcessMetaInAlarm);
+        assertEquals(metricsName, metaInAlarm.getMetricsName());
+        assertEquals("cf4be92893026c77c539266f47f2aa22f1e53ff64fc64803f5814293ff10a56f", metaInAlarm.getId0());
+        assertEquals("", metaInAlarm.getId1());
+        assertEquals(DefaultScopeDefine.PROCESS_CATALOG_NAME, metaInAlarm.getScope());
+        assertEquals("test-process in test-instance of test-service", metaInAlarm.getName());
+        assertEquals(DefaultScopeDefine.PROCESS, metaInAlarm.getScopeId());
+    }
+
     private void prepareNotify() {
         metadata = mock(MetricsMetaInfo.class);
         when(metadata.getScope()).thenReturn(DefaultScopeDefine.ALL);
@@ -268,7 +302,7 @@ public class NotifyHandlerTest {
     public void dontNotify() {
 
         MetricsMetaInfo metadata = mock(MetricsMetaInfo.class);
-        when(metadata.getScope()).thenReturn(DefaultScopeDefine.ALL);
+        when(metadata.getScope()).thenReturn(DefaultScopeDefine.SERVICE);
 
         MockMetrics mockMetrics = mock(MockMetrics.class);
         when(mockMetrics.getMeta()).thenReturn(metadata);

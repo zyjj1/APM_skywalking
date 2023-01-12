@@ -30,22 +30,26 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.skywalking.library.elasticsearch.ElasticSearch;
 import org.apache.skywalking.library.elasticsearch.requests.IndexRequest;
 import org.apache.skywalking.library.elasticsearch.requests.UpdateRequest;
 import org.apache.skywalking.library.elasticsearch.requests.factory.RequestFactory;
+import org.apache.skywalking.oap.server.library.util.RunnableWithExceptionProtection;
 
 import static java.util.Objects.requireNonNull;
 
 @Slf4j
 public final class BulkProcessor {
-    private final ArrayBlockingQueue<Object> requests;
+    private final ArrayBlockingQueue<Holder> requests;
 
     private final AtomicReference<ElasticSearch> es;
     private final int bulkActions;
     private final Semaphore semaphore;
+    private final long flushInternalInMillis;
+    private volatile long lastFlushTS = 0;
 
     public static BulkProcessorBuilder builder() {
         return new BulkProcessorBuilder();
@@ -70,25 +74,29 @@ public final class BulkProcessor {
         scheduler.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
         scheduler.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
         scheduler.setRemoveOnCancelPolicy(true);
+        flushInternalInMillis = flushInterval.getSeconds() * 1000;
         scheduler.scheduleWithFixedDelay(
-            this::flush, 0, flushInterval.getSeconds(), TimeUnit.SECONDS);
+            new RunnableWithExceptionProtection(
+                this::doPeriodicalFlush,
+                t -> log.error("flush data to ES failure:", t)
+            ), 0, flushInterval.getSeconds(), TimeUnit.SECONDS);
     }
 
-    public BulkProcessor add(IndexRequest request) {
-        internalAdd(request);
-        return this;
+    public CompletableFuture<Void> add(IndexRequest request) {
+        return internalAdd(request);
     }
 
-    public BulkProcessor add(UpdateRequest request) {
-        internalAdd(request);
-        return this;
+    public CompletableFuture<Void> add(UpdateRequest request) {
+        return internalAdd(request);
     }
 
     @SneakyThrows
-    private void internalAdd(Object request) {
+    private CompletableFuture<Void> internalAdd(Object request) {
         requireNonNull(request, "request");
-        requests.put(request);
+        final CompletableFuture<Void> f = new CompletableFuture<>();
+        requests.put(new Holder(f, request));
         flushIfNeeded();
+        return f;
     }
 
     @SneakyThrows
@@ -98,7 +106,16 @@ public final class BulkProcessor {
         }
     }
 
-    void flush() {
+    private void doPeriodicalFlush() {
+        if (System.currentTimeMillis() - lastFlushTS > flushInternalInMillis / 2) {
+            // Run periodical flush if there is no `flushIfNeeded` executed in the second half of the flush period.
+            // Otherwise, wait for the next round. By default, the last 2 seconds of the 5s period.
+            // This could avoid periodical flush running among bulks(controlled by bulkActions).
+            flush();
+        }
+    }
+
+    public void flush() {
         if (requests.isEmpty()) {
             return;
         }
@@ -110,15 +127,17 @@ public final class BulkProcessor {
             return;
         }
 
-        final List<Object> batch = new ArrayList<>(requests.size());
+        final List<Holder> batch = new ArrayList<>(requests.size());
         requests.drainTo(batch);
 
         final CompletableFuture<Void> flush = doFlush(batch);
         flush.whenComplete((ignored1, ignored2) -> semaphore.release());
         flush.join();
+
+        lastFlushTS = System.currentTimeMillis();
     }
 
-    private CompletableFuture<Void> doFlush(final List<Object> batch) {
+    private CompletableFuture<Void> doFlush(final List<Holder> batch) {
         log.debug("Executing bulk with {} requests", batch.size());
 
         if (batch.isEmpty()) {
@@ -129,8 +148,8 @@ public final class BulkProcessor {
             try {
                 final RequestFactory rf = v.requestFactory();
                 final List<byte[]> bs = new ArrayList<>();
-                for (final Object request : batch) {
-                    bs.add(v.codec().encode(request));
+                for (final Holder holder : batch) {
+                    bs.add(v.codec().encode(holder.request));
                     bs.add("\n".getBytes());
                 }
                 final ByteBuf content = Unpooled.wrappedBuffer(bs.toArray(new byte[0][]));
@@ -147,11 +166,20 @@ public final class BulkProcessor {
         });
         future.whenComplete((ignored, exception) -> {
             if (exception != null) {
+                batch.stream().map(it -> it.future)
+                     .forEach(it -> it.completeExceptionally(exception));
                 log.error("Failed to execute requests in bulk", exception);
             } else {
                 log.debug("Succeeded to execute {} requests in bulk", batch.size());
+                batch.stream().map(it -> it.future).forEach(it -> it.complete(null));
             }
         });
         return future;
+    }
+
+    @RequiredArgsConstructor
+    static class Holder {
+        private final CompletableFuture<Void> future;
+        private final Object request;
     }
 }

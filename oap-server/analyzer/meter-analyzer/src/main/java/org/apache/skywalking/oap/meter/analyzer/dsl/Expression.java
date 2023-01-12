@@ -23,6 +23,7 @@ import groovy.lang.ExpandoMetaClass;
 import groovy.lang.GroovyObjectSupport;
 import groovy.util.DelegatingScript;
 import java.time.Instant;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
@@ -33,12 +34,11 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @ToString(of = {"literal"})
 public class Expression {
+    private static final ThreadLocal<Map<String, SampleFamily>> PROPERTY_REPOSITORY = new ThreadLocal<>();
 
     private final String literal;
 
     private final DelegatingScript expression;
-
-    private final ThreadLocal<ImmutableMap<String, SampleFamily>> propertyRepository = new ThreadLocal<>();
 
     public Expression(final String literal, final DelegatingScript expression) {
         this.literal = literal;
@@ -55,7 +55,8 @@ public class Expression {
         try (ExpressionParsingContext ctx = ExpressionParsingContext.create()) {
             Result r = run(ImmutableMap.of());
             if (!r.isSuccess() && r.isThrowable()) {
-                throw new ExpressionParsingException("failed to parse expression: " + literal + ", error:" + r.getError());
+                throw new ExpressionParsingException(
+                    "failed to parse expression: " + literal + ", error:" + r.getError());
             }
             if (log.isDebugEnabled()) {
                 log.debug("\"{}\" is parsed", literal);
@@ -71,8 +72,8 @@ public class Expression {
      * @param sampleFamilies a data map includes all of candidates to be analysis.
      * @return The result of execution.
      */
-    public Result run(final ImmutableMap<String, SampleFamily> sampleFamilies) {
-        propertyRepository.set(sampleFamilies);
+    public Result run(final Map<String, SampleFamily> sampleFamilies) {
+        PROPERTY_REPOSITORY.set(sampleFamilies);
         try {
             SampleFamily sf = (SampleFamily) expression.run();
             if (sf == SampleFamily.EMPTY) {
@@ -88,12 +89,12 @@ public class Expression {
             log.error("failed to run \"{}\"", literal, t);
             return Result.fail(t);
         } finally {
-            propertyRepository.remove();
+            PROPERTY_REPOSITORY.remove();
         }
     }
 
     private void empower() {
-        expression.setDelegate(new ExpressionDelegate(literal, propertyRepository));
+        expression.setDelegate(new ExpressionDelegate(literal));
         extendNumber(Number.class);
     }
 
@@ -108,13 +109,13 @@ public class Expression {
 
     @RequiredArgsConstructor
     @SuppressWarnings("unused") // used in MAL expressions
-    public static class ExpressionDelegate extends GroovyObjectSupport {
+    private static class ExpressionDelegate extends GroovyObjectSupport {
         public static final DownsamplingType AVG = DownsamplingType.AVG;
         public static final DownsamplingType SUM = DownsamplingType.SUM;
         public static final DownsamplingType LATEST = DownsamplingType.LATEST;
+        public static final DownsamplingType SUM_PER_MIN = DownsamplingType.SUM_PER_MIN;
 
         private final String literal;
-        private final ThreadLocal<ImmutableMap<String, SampleFamily>> propertyRepository;
 
         public SampleFamily propertyMissing(String metricName) {
             ExpressionParsingContext.get().ifPresent(ctx -> {
@@ -122,7 +123,7 @@ public class Expression {
                     ctx.samples.add(metricName);
                 }
             });
-            ImmutableMap<String, SampleFamily> sampleFamilies = propertyRepository.get();
+            Map<String, SampleFamily> sampleFamilies = PROPERTY_REPOSITORY.get();
             if (sampleFamilies == null) {
                 return SampleFamily.EMPTY;
             }

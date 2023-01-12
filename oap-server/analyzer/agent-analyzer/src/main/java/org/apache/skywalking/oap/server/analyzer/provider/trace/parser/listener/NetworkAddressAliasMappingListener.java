@@ -25,7 +25,6 @@ import org.apache.skywalking.apm.network.language.agent.v3.SegmentObject;
 import org.apache.skywalking.apm.network.language.agent.v3.SpanLayer;
 import org.apache.skywalking.apm.network.language.agent.v3.SpanObject;
 import org.apache.skywalking.oap.server.core.CoreModule;
-import org.apache.skywalking.oap.server.core.analysis.NodeType;
 import org.apache.skywalking.oap.server.core.analysis.TimeBucket;
 import org.apache.skywalking.oap.server.core.config.NamingControl;
 import org.apache.skywalking.oap.server.core.source.NetworkAddressAliasSetup;
@@ -36,7 +35,7 @@ import org.apache.skywalking.oap.server.analyzer.provider.AnalyzerModuleConfig;
 /**
  * NetworkAddressAliasMappingListener use the propagated data in the segment reference, set up the alias relationship
  * between network address and current service and instance. The alias relationship will be used in the {@link
- * MultiScopesAnalysisListener#parseExit(SpanObject, SegmentObject)} to setup the accurate target destination service
+ * RPCAnalysisListener#parseExit(SpanObject, SegmentObject)} to setup the accurate target destination service
  * and instance.
  *
  * This is a key point of SkyWalking header propagation protocol.
@@ -75,7 +74,7 @@ public class NetworkAddressAliasMappingListener implements EntryAnalysisListener
                     final NetworkAddressAliasSetup networkAddressAliasSetup = new NetworkAddressAliasSetup();
                     networkAddressAliasSetup.setAddress(networkAddressUsedAtPeer);
                     networkAddressAliasSetup.setRepresentService(serviceName);
-                    networkAddressAliasSetup.setRepresentServiceNodeType(NodeType.Normal);
+                    networkAddressAliasSetup.setRepresentServiceNormal(true);
                     networkAddressAliasSetup.setRepresentServiceInstance(instanceName);
                     networkAddressAliasSetup.setTimeBucket(TimeBucket.getMinuteTimeBucket(span.getStartTime()));
 

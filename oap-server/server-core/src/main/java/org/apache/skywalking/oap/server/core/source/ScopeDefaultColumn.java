@@ -52,7 +52,8 @@ public class ScopeDefaultColumn {
         /**
          * Dynamic active means this column is only activated through core setting explicitly.
          *
-         * @return
+         * @return FALSE: this column is not going to be added to the final generated metric as a column.
+         *         TRUE: this column could be added as a column if core/activeExtraModelColumns == true.
          */
         boolean requireDynamicActive() default false;
 
@@ -71,6 +72,14 @@ public class ScopeDefaultColumn {
 
         Class type();
 
+        /**
+         * Declare this virtual column is representing an entity ID of this source and generated metrics.
+         * Typically, metric ID = timestamp + entity ID
+         *
+         * This takes {@link ISource#getEntityId()}'s return as the value.
+         *
+         * @return TRUE if this is an ID column.
+         */
         boolean isID() default false;
 
         /**

@@ -19,6 +19,7 @@
 package org.apache.skywalking.oap.server.core.storage;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import org.apache.skywalking.oap.server.library.client.request.InsertRequest;
 import org.apache.skywalking.oap.server.library.client.request.PrepareRequest;
 
@@ -43,5 +44,15 @@ public interface IBatchDAO extends DAO {
      *
      * @param prepareRequests data to insert or update. No delete happens in streaming mode.
      */
-    void flush(List<PrepareRequest> prepareRequests);
+    CompletableFuture<Void> flush(List<PrepareRequest> prepareRequests);
+
+    /**
+     * End of flush is an event to notify the whole flush period is ending.
+     * This provides a time point to do clean up works.
+     *
+     * @since 9.2.0
+     */
+    default void endOfFlush() {
+
+    }
 }

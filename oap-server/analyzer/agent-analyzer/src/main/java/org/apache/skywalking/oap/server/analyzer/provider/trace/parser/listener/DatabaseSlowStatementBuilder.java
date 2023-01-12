@@ -22,7 +22,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.apache.skywalking.oap.server.core.analysis.IDManager;
-import org.apache.skywalking.oap.server.core.analysis.NodeType;
+import org.apache.skywalking.oap.server.core.analysis.Layer;
 import org.apache.skywalking.oap.server.core.config.NamingControl;
 import org.apache.skywalking.oap.server.core.source.DatabaseSlowStatement;
 
@@ -41,7 +41,7 @@ public class DatabaseSlowStatementBuilder {
     private String serviceName;
     @Getter
     @Setter
-    private NodeType type = NodeType.Database;
+    private Layer layer = Layer.VIRTUAL_DATABASE;
     @Getter
     @Setter
     private String statement;
@@ -51,20 +51,23 @@ public class DatabaseSlowStatementBuilder {
     @Getter
     @Setter
     private long timeBucket;
+    @Getter
+    @Setter
+    private long timestamp;
 
-    void prepare() {
+    public void prepare() {
         this.serviceName = namingControl.formatServiceName(serviceName);
     }
 
-    DatabaseSlowStatement toDatabaseSlowStatement() {
+    public DatabaseSlowStatement toDatabaseSlowStatement() {
         DatabaseSlowStatement dbSlowStat = new DatabaseSlowStatement();
         dbSlowStat.setId(id);
         dbSlowStat.setTraceId(traceId);
-        dbSlowStat.setDatabaseServiceId(IDManager.ServiceID.buildId(serviceName, type));
+        dbSlowStat.setDatabaseServiceId(IDManager.ServiceID.buildId(serviceName, false));
         dbSlowStat.setStatement(statement);
         dbSlowStat.setLatency(latency);
         dbSlowStat.setTimeBucket(timeBucket);
+        dbSlowStat.setTimestamp(timestamp);
         return dbSlowStat;
     }
-
 }

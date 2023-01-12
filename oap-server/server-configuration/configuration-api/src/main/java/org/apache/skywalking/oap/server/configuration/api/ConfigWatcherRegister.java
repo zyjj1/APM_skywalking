@@ -26,7 +26,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.skywalking.apm.util.RunnableWithExceptionProtection;
+import org.apache.skywalking.oap.server.library.util.RunnableWithExceptionProtection;
 
 /**
  * The default implementor of Config Watcher register.
@@ -208,7 +208,7 @@ public abstract class ConfigWatcherRegister implements DynamicConfigurationServi
 
     public abstract Optional<GroupConfigTable> readGroupConfig(Set<String> keys);
 
-    public class Register {
+    static class Register {
         private Map<String, WatcherHolder> register = new HashMap<>();
 
         private boolean containsKey(String key) {
@@ -255,7 +255,7 @@ public abstract class ConfigWatcherRegister implements DynamicConfigurationServi
     }
 
     @Getter
-    protected class WatcherHolder {
+    protected static class WatcherHolder {
         private ConfigChangeWatcher watcher;
         private final String key;
 

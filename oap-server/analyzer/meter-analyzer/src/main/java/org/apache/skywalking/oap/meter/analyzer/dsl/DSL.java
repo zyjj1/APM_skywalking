@@ -25,7 +25,10 @@ import groovy.util.DelegatingScript;
 import java.lang.reflect.Array;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.skywalking.oap.meter.analyzer.dsl.registry.ProcessRegistry;
 import org.apache.skywalking.oap.meter.analyzer.dsl.tagOpt.K8sRetagType;
+import org.apache.skywalking.oap.server.core.analysis.Layer;
 import org.apache.skywalking.oap.server.core.source.DetectPoint;
 import org.codehaus.groovy.ast.stmt.DoWhileStatement;
 import org.codehaus.groovy.ast.stmt.ForStatement;
@@ -52,6 +55,8 @@ public final class DSL {
         ImportCustomizer icz = new ImportCustomizer();
         icz.addImport("K8sRetagType", K8sRetagType.class.getName());
         icz.addImport("DetectPoint", DetectPoint.class.getName());
+        icz.addImport("Layer", Layer.class.getName());
+        icz.addImport("ProcessRegistry", ProcessRegistry.class.getName());
         cc.addCompilationCustomizers(icz);
 
         final SecureASTCustomizer secureASTCustomizer = new SecureASTCustomizer();
@@ -70,7 +75,9 @@ public final class DSL {
                          .add(Array.class)
                          .add(K8sRetagType.class)
                          .add(DetectPoint.class)
-                         .build());
+                         .add(Layer.class)
+                         .add(ProcessRegistry.class)
+                .build());
         cc.addCompilationCustomizers(secureASTCustomizer);
 
         GroovyShell sh = new GroovyShell(new Binding(), cc);
