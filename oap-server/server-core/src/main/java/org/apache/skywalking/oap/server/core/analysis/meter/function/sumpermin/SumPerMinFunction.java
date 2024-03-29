@@ -30,9 +30,6 @@ import org.apache.skywalking.oap.server.core.analysis.meter.function.AcceptableV
 import org.apache.skywalking.oap.server.core.analysis.meter.function.MeterFunction;
 import org.apache.skywalking.oap.server.core.analysis.metrics.LongValueHolder;
 import org.apache.skywalking.oap.server.core.analysis.metrics.Metrics;
-import org.apache.skywalking.oap.server.core.analysis.metrics.annotation.Entrance;
-import org.apache.skywalking.oap.server.core.analysis.metrics.annotation.SourceFrom;
-import org.apache.skywalking.oap.server.core.query.sql.Function;
 import org.apache.skywalking.oap.server.core.remote.grpc.proto.RemoteData;
 import org.apache.skywalking.oap.server.core.storage.StorageID;
 import org.apache.skywalking.oap.server.core.storage.annotation.BanyanDB;
@@ -49,36 +46,31 @@ public abstract class SumPerMinFunction extends Meter implements AcceptableValue
 
     @Setter
     @Getter
-    @Column(columnName = ENTITY_ID, length = 512)
+    @Column(name = ENTITY_ID, length = 512)
     @BanyanDB.SeriesID(index = 0)
     private String entityId;
 
     @Setter
     @Getter
-    @Column(columnName = InstanceTraffic.SERVICE_ID)
+    @Column(name = InstanceTraffic.SERVICE_ID)
     private String serviceId;
 
     @Getter
     @Setter
-    @Column(columnName = VALUE, dataType = Column.ValueDataType.COMMON_VALUE, function = Function.Avg)
+    @Column(name = VALUE, dataType = Column.ValueDataType.COMMON_VALUE)
     @BanyanDB.MeasureField
     private long value;
 
     @Getter
     @Setter
-    @Column(columnName = TOTAL, storageOnly = true)
+    @Column(name = TOTAL, storageOnly = true)
     @BanyanDB.MeasureField
     private long total;
-
-    @Entrance
-    public final void combine(@SourceFrom long value) {
-        this.total += value;
-    }
 
     @Override
     public boolean combine(Metrics metrics) {
         final SumPerMinFunction sumPerMinFunction = (SumPerMinFunction) metrics;
-        combine(sumPerMinFunction.getTotal());
+        this.total += sumPerMinFunction.getTotal();
         return true;
     }
 

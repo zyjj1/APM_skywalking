@@ -18,12 +18,6 @@
 
 package org.apache.skywalking.oap.server.storage.plugin.elasticsearch.query.zipkin;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.skywalking.library.elasticsearch.requests.search.BoolQueryBuilder;
 import org.apache.skywalking.library.elasticsearch.requests.search.Query;
 import org.apache.skywalking.library.elasticsearch.requests.search.Search;
@@ -43,14 +37,24 @@ import org.apache.skywalking.oap.server.core.zipkin.ZipkinServiceSpanTraffic;
 import org.apache.skywalking.oap.server.core.zipkin.ZipkinServiceTraffic;
 import org.apache.skywalking.oap.server.core.zipkin.ZipkinSpanRecord;
 import org.apache.skywalking.oap.server.library.client.elasticsearch.ElasticSearchClient;
+import org.apache.skywalking.oap.server.library.client.elasticsearch.ElasticSearchScroller;
 import org.apache.skywalking.oap.server.library.util.CollectionUtils;
 import org.apache.skywalking.oap.server.library.util.StringUtil;
 import org.apache.skywalking.oap.server.storage.plugin.elasticsearch.base.ElasticSearchConverter;
 import org.apache.skywalking.oap.server.storage.plugin.elasticsearch.base.EsDAO;
 import org.apache.skywalking.oap.server.storage.plugin.elasticsearch.base.IndexController;
+import org.apache.skywalking.oap.server.storage.plugin.elasticsearch.base.RoutingUtils;
 import org.apache.skywalking.oap.server.storage.plugin.elasticsearch.base.TimeRangeIndexNameGenerator;
 import zipkin2.Span;
 import zipkin2.storage.QueryRequest;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 public class ZipkinQueryEsDAO extends EsDAO implements IZipkinQueryDAO {
     private final static int NAME_QUERY_MAX_SIZE = 10000;
@@ -69,30 +73,20 @@ public class ZipkinQueryEsDAO extends EsDAO implements IZipkinQueryDAO {
             query.must(Query.term(IndexController.LogicIndicesRegister.METRIC_TABLE_NAME, ZipkinServiceTraffic.INDEX_NAME));
         }
         final SearchBuilder search = Search.builder().query(query).size(SCROLLING_BATCH_SIZE);
-        final SearchParams params = new SearchParams().scroll(SCROLL_CONTEXT_RETENTION);
-        final List<String> services = new ArrayList<>();
 
-        SearchResponse response = getClient().search(index, search.build(), params);
-        final Set<String> scrollIds = new HashSet<>();
-        try {
-            while (response.getHits().getHits().size() != 0) {
-                String scrollId = response.getScrollId();
-                scrollIds.add(scrollId);
-                for (SearchHit searchHit : response.getHits()) {
-                    Map<String, Object> sourceAsMap = searchHit.getSource();
-                    ZipkinServiceTraffic record = new ZipkinServiceTraffic.Builder().storage2Entity(
-                        new ElasticSearchConverter.ToEntity(ZipkinServiceTraffic.INDEX_NAME, sourceAsMap));
-                    services.add(record.getServiceName());
-                }
-                if (services.size() < SCROLLING_BATCH_SIZE) {
-                    break;
-                }
-                response = getClient().scroll(SCROLL_CONTEXT_RETENTION, scrollId);
-            }
-        } finally {
-            scrollIds.forEach(getClient()::deleteScrollContextQuietly);
-        }
-        return services;
+        final var scroller = ElasticSearchScroller
+            .<String>builder()
+            .client(getClient())
+            .search(search.build())
+            .index(index)
+            .resultConverter(hit -> {
+                final var sourceAsMap = hit.getSource();
+                final var record = new ZipkinServiceTraffic.Builder().storage2Entity(
+                    new ElasticSearchConverter.ToEntity(ZipkinServiceTraffic.INDEX_NAME, sourceAsMap));
+                return record.getServiceName();
+            })
+            .build();
+        return scroller.scroll();
     }
 
     @Override
@@ -139,29 +133,23 @@ public class ZipkinQueryEsDAO extends EsDAO implements IZipkinQueryDAO {
         String index = IndexController.LogicIndicesRegister.getPhysicalTableName(ZipkinSpanRecord.INDEX_NAME);
         BoolQueryBuilder query = Query.bool().must(Query.term(ZipkinSpanRecord.TRACE_ID, traceId));
         SearchBuilder search = Search.builder().query(query).size(SCROLLING_BATCH_SIZE);
-        final SearchParams params = new SearchParams().scroll(SCROLL_CONTEXT_RETENTION);
-        SearchResponse response = getClient().search(index, search.build(), params);
-        final Set<String> scrollIds = new HashSet<>();
-        List<Span> trace = new ArrayList<>();
-        try {
-            while (response.getHits().getHits().size() != 0) {
-                String scrollId = response.getScrollId();
-                scrollIds.add(scrollId);
-                for (SearchHit searchHit : response.getHits()) {
-                    Map<String, Object> sourceAsMap = searchHit.getSource();
-                    ZipkinSpanRecord record = new ZipkinSpanRecord.Builder().storage2Entity(
-                        new ElasticSearchConverter.ToEntity(ZipkinSpanRecord.INDEX_NAME, sourceAsMap));
-                    trace.add(ZipkinSpanRecord.buildSpanFromRecord(record));
-                }
-                if (response.getHits().getHits().size() < SCROLLING_BATCH_SIZE) {
-                    break;
-                }
-                response = getClient().scroll(SCROLL_CONTEXT_RETENTION, scrollId);
-            }
-        } finally {
-            scrollIds.forEach(getClient()::deleteScrollContextQuietly);
-        }
-        return trace;
+        final var params = new SearchParams();
+        RoutingUtils.addRoutingValueToSearchParam(params, traceId);
+
+        final var scroller = ElasticSearchScroller
+            .<Span>builder()
+            .client(getClient())
+            .search(search.build())
+            .index(index)
+            .params(params)
+            .resultConverter(searchHit -> {
+                final var sourceAsMap = searchHit.getSource();
+                final var record = new ZipkinSpanRecord.Builder().storage2Entity(
+                    new ElasticSearchConverter.ToEntity(ZipkinSpanRecord.INDEX_NAME, sourceAsMap));
+                return ZipkinSpanRecord.buildSpanFromRecord(record);
+            })
+            .build();
+        return scroller.scroll();
     }
 
     @Override
@@ -217,16 +205,17 @@ public class ZipkinQueryEsDAO extends EsDAO implements IZipkinQueryDAO {
             TimeBucket.getRecordTimeBucket(startTimeMillis),
             TimeBucket.getRecordTimeBucket(endTimeMillis)
         ), search.build());
-        final Map<String, Object> idTerms =
-            (Map<String, Object>) traceIdResponse.getAggregations().get(ZipkinSpanRecord.TRACE_ID);
-        final List<Map<String, Object>> buckets =
-            (List<Map<String, Object>>) idTerms.get("buckets");
-
         Set<String> traceIds = new HashSet<>();
-        for (Map<String, Object> idBucket : buckets) {
-            traceIds.add((String) idBucket.get("key"));
-        }
+        if (Objects.nonNull(traceIdResponse.getAggregations())) {
+            final Map<String, Object> idTerms =
+                (Map<String, Object>) traceIdResponse.getAggregations().get(ZipkinSpanRecord.TRACE_ID);
+            final List<Map<String, Object>> buckets =
+                (List<Map<String, Object>>) idTerms.get("buckets");
 
+            for (Map<String, Object> idBucket : buckets) {
+                traceIds.add((String) idBucket.get("key"));
+            }
+        }
         return getTraces(traceIds);
     }
 
@@ -237,6 +226,7 @@ public class ZipkinQueryEsDAO extends EsDAO implements IZipkinQueryDAO {
         SearchBuilder search = Search.builder().query(query).sort(ZipkinSpanRecord.TIMESTAMP_MILLIS, Sort.Order.DESC)
                                      .size(SCROLLING_BATCH_SIZE); //max span size for 1 scroll
         final SearchParams params = new SearchParams().scroll(SCROLL_CONTEXT_RETENTION);
+        RoutingUtils.addRoutingValuesToSearchParam(params, traceIds);
 
         SearchResponse response = getClient().search(index, search.build(), params);
         final Set<String> scrollIds = new HashSet<>();

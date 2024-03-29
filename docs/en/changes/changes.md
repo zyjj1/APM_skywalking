@@ -1,99 +1,134 @@
-## 9.4.0
+## 10.0.0
 
 #### Project
-
-* Bump up Zipkin and Zipkin lens UI dependency to 2.24.0.
+* Support Java 21 runtime.
+* Support oap-java21 image for Java 21 runtime.
+* Upgrade `OTEL collector` version to `0.92.0` in all e2e tests.
+* Switch CI macOS runner to m1.
+* Upgrade PostgreSQL driver to `42.4.4` to fix CVE-2024-1597.
+* Remove CLI(`swctl`) from the image.
+* Remove CLI_VERSION variable from Makefile build.
+* Add BanyanDB to docker-compose quickstart.
 
 #### OAP Server
 
-* Add `ServerStatusService` in the core module to provide a new way to expose booting status to other modules.
-* Adds Micrometer as a new component.(ID=141)
-* Refactor session cache in MetricsPersistentWorker.
-* Cache enhancement - don't read new metrics from database in minute dimensionality.
-
-```
-    // When
-    // (1) the time bucket of the server's latest stability status is provided
-    //     1.1 the OAP has booted successfully
-    //     1.2 the current dimensionality is in minute.
-    //     1.3 the OAP cluster is rebalanced due to scaling
-    // (2) the metrics are from the time after the timeOfLatestStabilitySts
-    // (3) the metrics don't exist in the cache
-    // the kernel should NOT try to load it from the database.
-    //
-    // Notice, about condition (2),
-    // for the specific minute of booted successfully, the metrics are expected to load from database when
-    // it doesn't exist in the cache.
-```
-
-* Remove the offset of metric session timeout according to worker creation sequence.
-* Correct `MetricsExtension` annotations declarations in manual entities.
-* Support component IDs' priority in process relation metrics.
-* Remove abandon logic in MergableBufferedData, which caused unexpected no-update.
-* Fix miss set `LastUpdateTimestamp` that caused the metrics session to expire.
-* Rename MAL rule `spring-sleuth.yaml` to `spring-micrometer.yaml`.
-* Fix memory leak in Zipkin API.
-* Remove the dependency of `refresh_interval` of ElasticSearch indices from `elasticsearch/flushInterval` config. Now,
-  it uses `core/persistentPeriod` + 5s as `refresh_interval` for all indices instead.
-* Change `elasticsearch/flushInterval` to 5s(was 15s).
-* Optimize `flushInterval` of ElasticSearch BulkProcessor to avoid extra periodical flush in the continuous bulk streams.
-* An unexpected dot is added when exp is a pure metric name and expPrefix != null.
-* Support monitoring MariaDB.
-* Remove measure/stream specific interval settings in BanyanDB.
-* Add global-specific settings used to override global configurations (e.g `segmentIntervalDays`, `blockIntervalHours`) in BanyanDB.
-* Use TTL-driven interval settings for the `measure-default` group in BanyanDB.
-* Fix wrong group of non time-relative metadata in BanyanDB.
-* Refactor `StorageData#id` to the new StorageID object from a String type.
-* Support multiple component IDs in the service topology level.
-* Add `ElasticSearch.Keyword` annotation to declare the target field type as `keyword`.
-* [Breaking Change] Column `component_id` of `service_relation_client_side` and `service_relation_server_side` have been replaced by `component_ids`.
-* Support `priority` definition in the `component-libraries.yml`.
-* Enhance service topology query. When there are multiple components detected from the server side,
-  the component type of the node would be determined by the priority, which was random in the previous release.
-* Remove `component_id` from `service_instance_relation_client_side` and `service_instance_relation_server_side`.
-* Make the satellite E2E test more stable.
-* Add Istio 1.16 to test matrix.
-* Register ValueColumn as Tag for Record in BanyanDB storage plugin.
-* Bump up Netty to 4.1.86.
-* Remove unnecessary additional columns when storage is in logical sharding mode.
-* The cluster coordinator support watch mechanism for notifying `RemoteClientManager` and `ServerStatusService`.
-* Fix ServiceMeshServiceDispatcher overwrite ServiceDispatcher debug file when open SW_OAL_ENGINE_DEBUG.
-* Use `groupBy` and `in` operators to optimize topology query for BanyanDB storage plugin.
-* Support server status watcher for `MetricsPersistentWorker` to check the metrics whether required initialization.
-* Fix the meter value are not correct when using `sumPerMinLabeld` or `sumHistogramPercentile` MAL function.
-* Fix cannot display attached events when using Zipkin Lens UI query traces.
-* Remove `time_bucket` for both Stream and Measure kinds in BanyanDB plugin.
-* Merge `TIME_BUCKET` of `Metrics` and `Record` into `StorageData`.
-* Support no `layer` in the `listServices` query.
-* Fix `time_bucket` of `ServiceTraffic` not set correctly in `slowSql` of MAL.
-* Correct the TopN record query DAO of BanyanDB.
-* Tweak interval settings of BanyanDB.
-* Support monitoring AWS Cloud EKS.
-* Bump BanyanDB Java client to 0.3.0-rc1.
-* Remove `id` tag from measures.
-* Add `Banyandb.MeasureField` to mark a column as a BanyanDB Measure field.
-* Add `BanyanDB.StoreIDTag` to store a process's id for searching.
-* [**Breaking Change**] The supported version of ShardingSphere-Proxy is upgraded from 5.1.2 to 5.3.1. Due to the changes of ShardingSphere's API, versions before 5.3.1 are not compatible.
-* Add the eBPF network profiling E2E Test in the per storage.
-* Fix TCP service instances are lack of instance properties like `pod` and `namespace`, which causes Pod log not to work for TCP workloads.
+* Add `layer` parameter to the global topology graphQL query.
+* Add `is_present` function in MQE for check if the list metrics has a value or not.
+* Remove unreasonable default configurations for gRPC thread executor.
+* Remove `gRPCThreadPoolQueueSize (SW_RECEIVER_GRPC_POOL_QUEUE_SIZE)` configuration.
+* Allow excluding ServiceEntries in some namespaces when looking up ServiceEntries as a final resolution method of
+  service metadata.
+* Set up the length of source and dest IDs in relation entities of service, instance, endpoint, and process to 250(was
+  200).
+* Support build Service/Instance Hierarchy and query.
+* Change the string field in Elasticsearch storage from **keyword** type to **text** type if it set more than `32766` length.
+* [Break Change] Change the configuration field of `ui_template` and `ui_menu` in Elasticsearch storage from **keyword** type to **text**.
+* Support Service Hierarchy auto matching, add auto matching layer relationships (upper -> lower) as following:
+  - MESH -> MESH_DP
+  - MESH -> K8S_SERVICE
+  - MESH_DP -> K8S_SERVICE
+  - GENERAL -> K8S_SERVICE
+* Add `namespace` suffix for `K8S_SERVICE_NAME_RULE/ISTIO_SERVICE_NAME_RULE` and `metadata-service-mapping.yaml` as default.
+* Allow using a dedicated port for ALS receiver.
+* Fix log query by traceId in `JDBCLogQueryDAO`.
+* Support handler eBPF access log protocol.
+* Fix SumPerMinFunctionTest error function.
+* Remove unnecessary annotations and functions from Meter Functions.
+* Add `max` and `min` functions for MAL down sampling.
+* Fix critical bug of uncontrolled memory cost of TopN statistics. Change topN group key from `StorageId` to `entityId + timeBucket`.
+* Add Service Hierarchy auto matching layer relationships (upper -> lower) as following:
+  - MYSQL -> K8S_SERVICE
+  - POSTGRESQL -> K8S_SERVICE
+  - SO11Y_OAP -> K8S_SERVICE
+  - VIRTUAL_DATABASE -> MYSQL
+  - VIRTUAL_DATABASE -> POSTGRESQL
+* Add Golang as a supported language for AMQP.
+* Support available layers of service in the topology.
+* Add `count` aggregation function for MAL
+* Add Service Hierarchy auto matching layer relationships (upper -> lower) as following:
+  - NGINX -> K8S_SERVICE
+  - APISIX -> K8S_SERVICE
+  - GENERAL -> APISIX
+* Add Golang as a supported language for RocketMQ.
+* Support Apache RocketMQ server monitoring.
+* Add Service Hierarchy auto matching layer relationships (upper -> lower) as following:
+  - ROCKETMQ -> K8S_SERVICE
+  - VIRTUAL_MQ -> ROCKETMQ
+* Fix ServiceInstance `in` query.
+* Mock `/api/v1/status/buildinfo` for PromQL API.
+* Fix table exists check in the JDBC Storage Plugin.
+* Fix day-based table rolling time range strategy in JDBC storage.
+* Add `maxInboundMessageSize (SW_DCS_MAX_INBOUND_MESSAGE_SIZE)` configuration to change the max inbound message size of DCS.
+* Fix Service Layer when building Events in the EventHookCallback.
+* Add Golang as a supported language for Pulsar.
+* Add Service Hierarchy auto matching layer relationships (upper -> lower) as following:
+  - RABBITMQ -> K8S_SERVICE
+  - VIRTUAL_MQ -> RABBITMQ
+* Remove Column#function mechanism in the kernel.
+* Make query `readMetricValue` always return the average value of the duration.
+* Add Service Hierarchy auto matching layer relationships (upper -> lower) as following:
+  - KAFKA -> K8S_SERVICE
+  - VIRTUAL_MQ -> KAFKA
+* Support ClickHouse server monitoring.
+* Add Service Hierarchy auto matching layer relationships (upper -> lower) as following:
+  - CLICKHOUSE -> K8S_SERVICE
+  - VIRTUAL_DATABASE -> CLICKHOUSE
+* Add Service Hierarchy auto matching layer relationships (upper -> lower) as following:
+  - PULSAR -> K8S_SERVICE
+  - VIRTUAL_MQ -> PULSAR
+* Add Golang as a supported language for Kafka.
+* Support displaying the port services listen to from OAP and UI during server start.
+* Refactor data-generator to support generating metrics.
+* Fix `AvgHistogramPercentileFunction` legacy name.
 
 #### UI
 
-* Add Zipkin Lens UI to webapp, and proxy it to context path `/zipkin`.
-* Migrate the build tool from vue cli to Vite4.
-* Fix Instance Relation and Endpoint Relation dashboards show up.
-* Add Micrometer icon
-* Update MySQL UI to support MariaDB
-* Add AWS menu for supporting AWS monitoring
+* Fix the mismatch between the unit and calculation of the "Network Bandwidth Usage" widget in Linux-Service Dashboard.
+* Add theme change animation.
+* Implement the Service and Instance hierarchy topology.
+* Support Tabs in the widget visible when MQE expressions.
+* Support search on Marketplace.
+* Fix default route.
+* Fix layout on the Log widget.
+* Fix Trace associates with Log widget.
+* Add isDefault to the dashboard configuration.
+* Add expressions to dashboard configurations on the dashboard list page.
+* Update Kubernetes related UI templates for adapt data from eBPF access log. 
+* Fix dashboard `K8S-Service-Root` metrics expression.
+* Add dashboards for Service/Instance Hierarchy.
+* Fix MQE in dashboards when using `Card widget`.
+* Optimize tooltips style.
+* Fix resizing window causes the trace graph to display incorrectly.
+* Add the not found page(404).
+* Enhance VNode logic and support multiple Trace IDs in span's ref.
+* Add the layers filed and associate layers dashboards for the service topology nodes.
+* Fix `Nginx-Instance` metrics to instance level.
+* Update tabs of the Kubernetes service page. 
 
 #### Documentation
 
-* Remove Spring Sleuth docs, and add `Spring MicroMeter Observations Analysis` with the latest Java agent side
-  enhancement.
-* Update `monitoring MySQL document` to add the `MariaDB` part.
-* Reorganize the protocols docs to a more clear API docs.
-* Add documentation about replacing Zipkin server with SkyWalking OAP.
-* Add Lens UI relative docs in Zipkin trace section.
-* Add Profiling APIs.
+* Update the release doc to remove the announcement as the tests are through e2e rather than manually.
+* Update the release notification mail a little.
+* Polish docs structure. Move customization docs separately from the introduction docs.
+* Add webhook/gRPC hooks settings example for `backend-alarm.md`.
+* Begin the process of `SWIP - SkyWalking Improvement Proposal`.
+* Add `SWIP-1 Create and detect Service Hierarchy Relationship`.
+* Add `SWIP-2 Collecting and Gathering Kubernetes Monitoring Data`.
+* Update the `Overview` docs to add the `Service Hierarchy Relationship` section.
+* Fix incorrect words for `backend-bookkeeper-monitoring.md` and `backend-pulsar-monitoring.md`
+* Document a new way to load balance OAP.
+* Add `SWIP-3 Support RocketMQ monitoring`.
+* Add `OpenTelemetry SkyWalking Exporter` deprecated warning doc.
+* Update i18n for rocketmq monitoring.
+* Fix: remove click event after unmounted.
+* Fix: end loading without query results.
+* Update nanoid version to 3.3.7.
+* Update postcss version to 8.4.33.
+* Fix kafka topic name in exporter doc.
+* Fix query-protocol.md, make it consistent with the GraphQL query protocol.
+* Add `SWIP-5 Support ClickHouse Monitoring`.
+* Remove `OpenTelemetry Exporter` support from meter doc, as this has been flagged as unmaintained on OTEL upstream.
+* Add doc of one-line quick start script for different storage types.
+* Add FAQ for `Why is Clickhouse or Loki or xxx not supported as a storage option?`.
 
-All issues and pull requests are [here](https://github.com/apache/skywalking/milestone/160?closed=1)
+All issues and pull requests are [here](https://github.com/apache/skywalking/milestone/202?closed=1)

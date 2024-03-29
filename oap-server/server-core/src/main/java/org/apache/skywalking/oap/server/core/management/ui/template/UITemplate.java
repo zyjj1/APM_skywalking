@@ -47,17 +47,17 @@ public class UITemplate extends ManagementData {
     public static final String UPDATE_TIME = "update_time";
     public static final String DISABLED = "disabled";
 
-    @Column(columnName = TEMPLATE_ID)
+    @Column(name = TEMPLATE_ID)
     private String templateId;
     /**
      * Configuration in JSON format.
      */
-    @Column(columnName = CONFIGURATION, storageOnly = true, length = 1_000_000)
+    @Column(name = CONFIGURATION, storageOnly = true, length = 1_000_000)
     private String configuration;
-    @Column(columnName = UPDATE_TIME)
-    private long updateTime;
-    @Column(columnName = DISABLED)
-    private int disabled;
+    @Column(name = UPDATE_TIME)
+    private Long updateTime;
+    @Column(name = DISABLED)
+    private Integer disabled;
 
     @Override
     public StorageID id() {
@@ -70,6 +70,7 @@ public class UITemplate extends ManagementData {
             UITemplate uiTemplate = new UITemplate();
             uiTemplate.setTemplateId((String) converter.get(TEMPLATE_ID));
             uiTemplate.setConfiguration((String) converter.get(CONFIGURATION));
+            uiTemplate.setUpdateTime(((Number) converter.get(UPDATE_TIME)).longValue());
             uiTemplate.setDisabled(((Number) converter.get(DISABLED)).intValue());
             return uiTemplate;
         }

@@ -19,49 +19,30 @@
 package org.apache.skywalking.oap.meter.analyzer.dsl;
 
 import com.google.common.collect.ImmutableMap;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.skywalking.oap.server.core.analysis.Layer;
 import org.apache.skywalking.oap.server.core.analysis.meter.MeterEntity;
 import org.apache.skywalking.oap.server.core.config.NamingControl;
 import org.apache.skywalking.oap.server.core.config.group.EndpointNameGrouping;
 import org.apache.skywalking.oap.server.core.source.DetectPoint;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 import static com.google.common.collect.ImmutableMap.of;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.fail;
 
 @Slf4j
-@RunWith(Parameterized.class)
 public class ScopeTest {
-
-    @Parameterized.Parameter
-    public String name;
-
-    @Parameterized.Parameter(1)
-    public ImmutableMap<String, SampleFamily> input;
-
-    @Parameterized.Parameter(2)
-    public String expression;
-
-    @Parameterized.Parameter(3)
-    public boolean isThrow;
-
-    @Parameterized.Parameter(4)
-    public Map<MeterEntity, Sample[]> want;
-
-    @Parameterized.Parameters(name = "{index}: {0}")
     public static Collection<Object[]> data() {
-        // This method is called before `@BeforeClass`.
+        // This method is called before `@BeforeAll`.
         MeterEntity.setNamingControl(
             new NamingControl(512, 512, 512, new EndpointNameGrouping()));
 
@@ -513,7 +494,7 @@ public class ScopeTest {
                 new HashMap<MeterEntity, Sample[]>() {
                     {
                         put(
-                            MeterEntity.newServiceRelation("productpage", "details", DetectPoint.CLIENT, Layer.GENERAL),
+                            MeterEntity.newServiceRelation("productpage", "details", DetectPoint.CLIENT, Layer.GENERAL, 0),
                             new Sample[] {
                                 Sample.builder()
                                       .labels(of())
@@ -522,12 +503,51 @@ public class ScopeTest {
                             }
                         );
                         put(
-                            MeterEntity.newServiceRelation("productpage", "reviews", DetectPoint.CLIENT, Layer.GENERAL),
+                            MeterEntity.newServiceRelation("productpage", "reviews", DetectPoint.CLIENT, Layer.GENERAL, 0),
                             new Sample[] {
                                 Sample.builder()
                                       .labels(of())
                                       .value(16)
                                       .name("envoy_cluster_metrics_up_cx_active").build()
+                            }
+                        );
+                    }
+                }
+            },
+            {
+                "sum_service_relation_with_component",
+                of("envoy_cluster_metrics_up_cx_active", SampleFamilyBuilder.newBuilder(
+                    Sample.builder()
+                        .labels(of("app", "productpage", "cluster_name", "details", "env", "test", "component", "10"))
+                        .value(11)
+                        .name("envoy_cluster_metrics_up_cx_active")
+                        .build(),
+                    Sample.builder()
+                        .labels(of("app", "productpage", "cluster_name", "reviews", "env", "test", "component", "10"))
+                        .value(16)
+                        .name("envoy_cluster_metrics_up_cx_active")
+                        .build()
+                ).build()),
+                "envoy_cluster_metrics_up_cx_active.sum(['app' ,'cluster_name', 'env', 'component']).serviceRelation(DetectPoint.CLIENT, ['app', 'env'], ['cluster_name'], '-', Layer.GENERAL, 'component')",
+                false,
+                new HashMap<MeterEntity, Sample[]>() {
+                    {
+                        put(
+                            MeterEntity.newServiceRelation("productpage-test", "details", DetectPoint.CLIENT, Layer.GENERAL, 10),
+                            new Sample[] {
+                                Sample.builder()
+                                    .labels(of())
+                                    .value(11)
+                                    .name("envoy_cluster_metrics_up_cx_active").build()
+                            }
+                        );
+                        put(
+                            MeterEntity.newServiceRelation("productpage-test", "reviews", DetectPoint.CLIENT, Layer.GENERAL, 10),
+                            new Sample[] {
+                                Sample.builder()
+                                    .labels(of())
+                                    .value(16)
+                                    .name("envoy_cluster_metrics_up_cx_active").build()
                             }
                         );
                     }
@@ -576,20 +596,25 @@ public class ScopeTest {
         });
     }
 
-    @BeforeClass
+    @BeforeAll
     public static void setup() {
         MeterEntity.setNamingControl(
             new NamingControl(512, 512, 512, new EndpointNameGrouping()));
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDown() {
         MeterEntity.setNamingControl(null);
     }
 
-    @Test
-    public void test() {
-        Expression e = DSL.parse(expression);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("data")
+    public void test(final String name,
+                     final ImmutableMap<String, SampleFamily> input,
+                     final String expression,
+                     final boolean isThrow,
+                     final Map<MeterEntity, Sample[]> want) {
+        Expression e = DSL.parse(name, expression);
         Result r = null;
         try {
             r = e.run(input);
@@ -603,10 +628,10 @@ public class ScopeTest {
         if (isThrow) {
             fail("Should throw something");
         }
-        assertThat(r.isSuccess(), is(true));
+        assertThat(r.isSuccess()).isEqualTo(true);
         Map<MeterEntity, Sample[]> meterSamplesR = r.getData().context.getMeterSamples();
         meterSamplesR.forEach((meterEntity, samples) -> {
-            assertThat(samples, is(want.get(meterEntity)));
+            assertThat(samples).isEqualTo(want.get(meterEntity));
         });
     }
 }

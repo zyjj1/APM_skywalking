@@ -346,10 +346,21 @@ public class ElasticSearchClient implements Client, HealthCheckable {
         es.get().documents().update(wrapper.getRequest(), params);
     }
 
+    public void deleteById(String indexName, String id) {
+        indexName = indexNameConverter.apply(indexName);
+        Map<String, Object> params = ImmutableMap.of("refresh", "true");
+        es.get().documents().deleteById(indexName, TYPE, id, params);
+    }
+
     public IndexRequestWrapper prepareInsert(String indexName, String id,
                                              Map<String, Object> source) {
+        return prepareInsert(indexName, id, Optional.empty(), source);
+    }
+
+    public IndexRequestWrapper prepareInsert(String indexName, String id, Optional<String> routingValue,
+                                             Map<String, Object> source) {
         indexName = indexNameConverter.apply(indexName);
-        return new IndexRequestWrapper(indexName, TYPE, id, source);
+        return new IndexRequestWrapper(indexName, TYPE, id, routingValue, source);
     }
 
     public UpdateRequestWrapper prepareUpdate(String indexName, String id,
@@ -360,9 +371,11 @@ public class ElasticSearchClient implements Client, HealthCheckable {
 
     public BulkProcessor createBulkProcessor(int bulkActions,
                                              int flushInterval,
-                                             int concurrentRequests) {
+                                             int concurrentRequests,
+                                             int batchOfBytes) {
         return BulkProcessor.builder()
                             .bulkActions(bulkActions)
+                            .batchOfBytes(batchOfBytes)
                             .flushInterval(Duration.ofSeconds(flushInterval))
                             .concurrentRequests(concurrentRequests)
                             .build(es);

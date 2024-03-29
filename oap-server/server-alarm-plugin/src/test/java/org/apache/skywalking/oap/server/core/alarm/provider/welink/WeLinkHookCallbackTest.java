@@ -19,30 +19,33 @@
 package org.apache.skywalking.oap.server.core.alarm.provider.welink;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.server.ServerBuilder;
-import com.linecorp.armeria.testing.junit4.server.ServerRule;
+import com.linecorp.armeria.testing.junit5.server.ServerExtension;
+import org.apache.skywalking.oap.server.core.alarm.AlarmMessage;
+import org.apache.skywalking.oap.server.core.alarm.provider.AlarmHooksType;
+import org.apache.skywalking.oap.server.core.alarm.provider.AlarmRulesWatcher;
+import org.apache.skywalking.oap.server.core.alarm.provider.Rules;
+import org.apache.skywalking.oap.server.core.source.DefaultScopeDefine;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.skywalking.oap.server.core.alarm.AlarmMessage;
-import org.apache.skywalking.oap.server.core.alarm.provider.AlarmRulesWatcher;
-import org.apache.skywalking.oap.server.core.alarm.provider.Rules;
-import org.apache.skywalking.oap.server.core.source.DefaultScopeDefine;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
 
 public class WeLinkHookCallbackTest {
-    private final AtomicBoolean isSuccess = new AtomicBoolean();
-    private final AtomicInteger count = new AtomicInteger();
+    private static final AtomicBoolean IS_SUCCESS = new AtomicBoolean();
+    private static final AtomicInteger COUNT = new AtomicInteger();
 
-    @Rule
-    public final ServerRule server = new ServerRule() {
+    @RegisterExtension
+    public static final ServerExtension SERVER = new ServerExtension() {
         @Override
         protected void configure(ServerBuilder sb) {
             sb.serviceUnder("/welinkhook", (ctx, req) -> HttpResponse.from(
@@ -50,19 +53,16 @@ public class WeLinkHookCallbackTest {
                     final String content = r.content().toStringUtf8();
                     final JsonObject jsonObject = new Gson().fromJson(content, JsonObject.class);
 
-                    if (count.get() == 0) {
-                        String clientId = jsonObject.get("client_id").getAsString();
-                        if (clientId != null) {
-                            count.incrementAndGet();
-                        }
-                    } else if (count.get() >= 1) {
-                        String appMsgId = jsonObject.get("app_msg_id").getAsString();
-                        if (appMsgId != null) {
-                            count.incrementAndGet();
-                        }
+                    JsonElement clientId = jsonObject.get("client_id");
+                    if (clientId != null) {
+                        COUNT.incrementAndGet();
                     }
-                    if (count.get() == 2) {
-                        isSuccess.set(true);
+                    JsonElement appMsgId = jsonObject.get("app_msg_id");
+                    if (appMsgId != null) {
+                        COUNT.incrementAndGet();
+                    }
+                    if (COUNT.get() == 4) {
+                        IS_SUCCESS.set(true);
                     }
 
                     return HttpResponse.of(HttpStatus.OK, MediaType.JSON, "{}");
@@ -71,16 +71,23 @@ public class WeLinkHookCallbackTest {
     };
 
     @Test
-    public void testWeLinkDoAlarm() {
+    public void testWeLinkDoAlarm() throws Exception {
         List<WeLinkSettings.WebHookUrl> webHooks = new ArrayList<>();
         webHooks.add(new WeLinkSettings.WebHookUrl("clientId", "clientSecret",
-                                                   "http://127.0.0.1:" + server.httpPort() + "/welinkhook/api/auth/v2/tickets",
-                                                   "http://127.0.0.1:" + server.httpPort() + "/welinkhook/api/welinkim/v1/im-service/chat/group-chat",
+                                                   "http://127.0.0.1:" + SERVER.httpPort() + "/welinkhook/api/auth/v2/tickets",
+                                                   "http://127.0.0.1:" + SERVER.httpPort() + "/welinkhook/api/welinkim/v1/im-service/chat/group-chat",
                                                    "robotName", "1,2,3"
         ));
         Rules rules = new Rules();
         String template = "Apache SkyWalking Alarm: \n %s.";
-        rules.setWelinks(WeLinkSettings.builder().webhooks(webHooks).textTemplate(template).build());
+        WeLinkSettings setting1 = new WeLinkSettings("setting1", AlarmHooksType.welink, true);
+        setting1.setWebhooks(webHooks);
+        setting1.setTextTemplate(template);
+        WeLinkSettings setting2 = new WeLinkSettings("setting2", AlarmHooksType.welink, false);
+        setting2.setWebhooks(webHooks);
+        setting2.setTextTemplate(template);
+        rules.getWeLinkSettingsMap().put(setting1.getFormattedName(), setting1);
+        rules.getWeLinkSettingsMap().put(setting2.getFormattedName(), setting2);
 
         AlarmRulesWatcher alarmRulesWatcher = new AlarmRulesWatcher(rules, null);
         WeLinkHookCallback welinkHookCallback = new WeLinkHookCallback(alarmRulesWatcher);
@@ -89,13 +96,15 @@ public class WeLinkHookCallbackTest {
         alarmMessage.setScopeId(DefaultScopeDefine.SERVICE);
         alarmMessage.setRuleName("service_resp_time_rule");
         alarmMessage.setAlarmMessage("alarmMessage with [DefaultScopeDefine.All]");
+        alarmMessage.getHooks().add(setting1.getFormattedName());
         alarmMessages.add(alarmMessage);
         AlarmMessage anotherAlarmMessage = new AlarmMessage();
         anotherAlarmMessage.setRuleName("service_resp_time_rule_2");
         anotherAlarmMessage.setScopeId(DefaultScopeDefine.ENDPOINT);
         anotherAlarmMessage.setAlarmMessage("anotherAlarmMessage with [DefaultScopeDefine.Endpoint]");
+        anotherAlarmMessage.getHooks().add(setting2.getFormattedName());
         alarmMessages.add(anotherAlarmMessage);
         welinkHookCallback.doAlarm(alarmMessages);
-        Assert.assertTrue(isSuccess.get());
+        Assertions.assertTrue(IS_SUCCESS.get());
     }
 }

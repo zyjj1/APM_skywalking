@@ -119,13 +119,13 @@ ElasticJob:
   languages: Java
 RocketMQ:
   id: 25
-  languages: Java
+  languages: Java,Golang
 httpasyncclient:
   id: 26
   languages: Java
 Kafka:
   id: 27
-  languages: Java
+  languages: Java,Golang
 ServiceComb:
   id: 28
   languages: Java
@@ -158,16 +158,16 @@ postgresql-jdbc-driver:
   languages: Java
 rocketMQ-producer:
   id: 38
-  languages: Java
+  languages: Java,Golang
 rocketMQ-consumer:
   id: 39
-  languages: Java
+  languages: Java,Golang
 kafka-producer:
   id: 40
-  languages: Java,Python
+  languages: Java,Python,Golang
 kafka-consumer:
   id: 41
-  languages: Java,Python
+  languages: Java,Python,Golang
 mongodb-driver:
   id: 42
   languages: Java
@@ -262,13 +262,13 @@ Light4J:
   languages: Java
 Pulsar:
   id: 72
-  languages: Java
+  languages: Java,Golang
 pulsar-producer:
   id: 73
-  languages: Java
+  languages: Java,Golang
 pulsar-consumer:
   id: 74
-  languages: Java
+  languages: Java,Golang
 Ehcache:
   id: 75
   languages: Java
@@ -328,7 +328,7 @@ spring-annotation:
   languages: Java
 HBase:
   id: 94
-  languages: Java
+  languages: Java,Python
 spring-kafka-consumer:
   id: 95
   languages: Java
@@ -383,7 +383,7 @@ AzureHttpTrigger:
   languages: Java,C#,Node.js,Python
 Neo4j:
   id: 112
-  languages: Java
+  languages: Java,Python
 Sentinel:
   id: 113
   languages: Java
@@ -438,7 +438,7 @@ https:
   priority: 46
 tls:
   id: 130
-  languages: ebpf
+  languages: ebpf, mesh
   priority: 11
 Micronaut:
   id: 131
@@ -473,6 +473,39 @@ AWSSQS:
 Micrometer:
   id: 141
   languages: Java
+mtls:
+  id: 142
+  languages: ebpf, mesh
+  priority: 12
+amqp:
+  id: 143
+  languages: PHP,Golang
+  priority: 45
+amqp-producer:
+  id: 144
+  languages: PHP,Golang
+amqp-consumer:
+  id: 145
+  languages: PHP,Golang
+Jersey:
+  id: 146
+  languages: Java
+Grizzly:
+  id: 147
+  languages: Java
+WebSphere:
+  id: 148
+  languages: Java
+Aerospike:
+  id: 149
+  languages: Java
+Nacos:
+  id: 150
+  languages: Java
+Netty-http:
+  id: 151
+  languages: Java
+
 
 # .NET/.NET Core components
 # [3000, 4000) for C#/.NET only
@@ -526,6 +559,9 @@ SmartSql:
   languages: C#
 FreeSql:
   id: 3017
+  languages: C#
+FreeRedis:
+  id: 3018
   languages: C#
 
 # NoeJS components
@@ -587,6 +623,30 @@ GoMysql:
 OpenFunction:
   id: 5013
   languages: Golang,Node.js,Python,Java
+GoRedis:
+  id: 5014
+  languages: Golang
+Echo:
+  id: 5015
+  language: Golang
+Lock:
+  id: 5016
+  language: Golang,Node.js,Python,java
+GoMuxServer:
+  id: 5017
+  language: Golang
+Iris:
+  id: 5018
+  language: Golang
+GoFastHttpClient:
+  id: 5019
+  language: Golang
+GoFastHttpServer:
+  id: 5020
+  language: Golang
+Fiber:
+  id: 5021
+  language: Golang
 
 # Lua components
 # [6000, 7000) for Lua agent
@@ -655,6 +715,12 @@ AsyncPG:
 AIORedis:
   id: 7017
   languages: Python
+Websockets:
+  id: 7018
+  languages: Python
+HTTPX:
+  id: 7019
+  languages: Python
 
 # PHP components
 # [8000, 9000) for PHP agent
@@ -717,6 +783,7 @@ Component-Server-Mappings:
   h2-jdbc-driver: H2
   mysql-connector-java: Mysql
   Jedis: Redis
+  FreeRedis: Redis
   StackExchange.Redis: Redis
   Redisson: Redis
   Lettuce: Redis
@@ -752,3 +819,6 @@ Component-Server-Mappings:
   Impala-jdbc-driver: Impala
   eventmesh-producer: EventMesh
   eventmesh-consumer: EventMesh
+  amqp-producer: amqp
+  amqp-consumer: amqp
+  GoRedis: Redis

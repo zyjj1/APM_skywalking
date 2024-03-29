@@ -2,7 +2,7 @@
 SkyWalking UI distribution is already included in our Apache official release.
 
 ## Startup
-Startup script is also in `/bin/webappService.sh`(.bat). UI runs as an OS Java process, powered-by Zuul.
+Startup script is also in `/bin/webappService.sh`(.bat). UI runs as a Java process, powered-by Armeria.
 
 ## Settings
 The settings file of UI is  `webapp/webapp.yml` in the distribution package. It has three parts.
@@ -13,9 +13,9 @@ The settings file of UI is  `webapp/webapp.yml` in the distribution package. It 
 ```yaml
 serverPort: ${SW_SERVER_PORT:-8080}
 
-# Comma separated list of OAP addresses, without http:// prefix.
-oapServices: ${SW_OAP_ADDRESS:-localhost:12800}
-zipkinServices: ${SW_ZIPKIN_ADDRESS:localhost:9412}
+# Comma separated list of OAP addresses, with `http://` or `https://` prefix.
+oapServices: ${SW_OAP_ADDRESS:-http://localhost:12800}
+zipkinServices: ${SW_ZIPKIN_ADDRESS:http://localhost:9412}
 ```
 
 ## Start with Docker Image
@@ -23,7 +23,8 @@ zipkinServices: ${SW_ZIPKIN_ADDRESS:localhost:9412}
 Start a container to connect OAP server whose address is `http://oap:12800`.
 
 ```shell
-docker run --name oap --restart always -d -e SW_OAP_ADDRESS=http://oap:12800 -e SW_ZIPKIN_ADDRESS=http://oap:9412 apache/skywalking-ui:8.8.0
+export version=9.0.0
+docker run --name oap --restart always -d -e SW_OAP_ADDRESS=http://oap:12800 -e SW_ZIPKIN_ADDRESS=http://oap:9412 apache/skywalking-ui:$version
 ```
 
 ### Configuration

@@ -18,18 +18,19 @@
 
 package org.apache.skywalking.oap.server.core.alarm.provider;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-
+import java.util.Map;
+import java.util.Set;
 import org.apache.skywalking.oap.server.core.alarm.AlarmCallback;
 import org.apache.skywalking.oap.server.core.alarm.AlarmMessage;
 import org.joda.time.LocalDateTime;
 import org.joda.time.Minutes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Alarm core includes metrics values in certain time windows based on alarm settings. By using its internal timer
@@ -45,8 +46,23 @@ public class AlarmCore {
         this.alarmRulesWatcher = alarmRulesWatcher;
     }
 
+    /**
+     * Find the running rules by the metrics name.
+     *
+     * @param metricsName to be found
+     * @return the matched running rule list, or null if not found.
+     */
     public List<RunningRule> findRunningRule(String metricsName) {
-        return alarmRulesWatcher.getRunningContext().get(metricsName);
+        List<RunningRule> runningRules = new ArrayList<>();
+        for (Map.Entry<String, Set<String>> entry : alarmRulesWatcher.getExprMetricsMap().entrySet()) {
+            if (entry.getValue().contains(metricsName)) {
+                List<RunningRule> found = alarmRulesWatcher.getRunningContext().get(entry.getKey());
+                if (found != null) {
+                    runningRules.addAll(found);
+                }
+            }
+        }
+        return runningRules.size() > 0 ? runningRules : null;
     }
 
     public void start(List<AlarmCallback> allCallbacks) {
@@ -76,13 +92,12 @@ public class AlarmCore {
                 }
 
                 if (!alarmMessageList.isEmpty()) {
-                    if (!alarmRulesWatcher.getCompositeRules().isEmpty()) {
-                        List<AlarmMessage> messages = alarmRulesWatcher.getCompositeRuleEvaluator().evaluate(alarmRulesWatcher.getCompositeRules(), alarmMessageList);
-                        alarmMessageList.addAll(messages);
-                    }
-                    List<AlarmMessage> filteredMessages = alarmMessageList.stream().filter(msg -> !msg.isOnlyAsCondition()).collect(Collectors.toList());
-                    if (!filteredMessages.isEmpty()) {
-                        allCallbacks.forEach(callback -> callback.doAlarm(filteredMessages));
+                    for (AlarmCallback callback : allCallbacks) {
+                        try {
+                            callback.doAlarm(alarmMessageList);
+                        } catch (Exception e) {
+                            LOGGER.error(e.getMessage(), e);
+                        }
                     }
                 }
             } catch (Exception e) {

@@ -23,14 +23,21 @@ import org.apache.skywalking.banyandb.v1.client.BanyanDBClient;
 import org.apache.skywalking.banyandb.v1.client.MeasureBulkWriteProcessor;
 import org.apache.skywalking.banyandb.v1.client.MeasureQuery;
 import org.apache.skywalking.banyandb.v1.client.MeasureQueryResponse;
+import org.apache.skywalking.banyandb.v1.client.MeasureWrite;
 import org.apache.skywalking.banyandb.v1.client.StreamBulkWriteProcessor;
 import org.apache.skywalking.banyandb.v1.client.StreamQuery;
 import org.apache.skywalking.banyandb.v1.client.StreamQueryResponse;
 import org.apache.skywalking.banyandb.v1.client.StreamWrite;
+import org.apache.skywalking.banyandb.v1.client.TopNQuery;
+import org.apache.skywalking.banyandb.v1.client.TopNQueryResponse;
+import org.apache.skywalking.banyandb.v1.client.grpc.exception.AlreadyExistsException;
 import org.apache.skywalking.banyandb.v1.client.grpc.exception.BanyanDBException;
+import org.apache.skywalking.banyandb.v1.client.metadata.Group;
 import org.apache.skywalking.banyandb.v1.client.metadata.Measure;
 import org.apache.skywalking.banyandb.v1.client.metadata.Property;
+import org.apache.skywalking.banyandb.v1.client.metadata.PropertyStore;
 import org.apache.skywalking.banyandb.v1.client.metadata.Stream;
+import org.apache.skywalking.banyandb.v1.client.metadata.TopNAggregation;
 import org.apache.skywalking.oap.server.library.client.Client;
 import org.apache.skywalking.oap.server.library.client.healthcheck.DelegatedHealthChecker;
 import org.apache.skywalking.oap.server.library.client.healthcheck.HealthCheckable;
@@ -48,8 +55,8 @@ public class BanyanDBStorageClient implements Client, HealthCheckable {
     final BanyanDBClient client;
     private final DelegatedHealthChecker healthChecker = new DelegatedHealthChecker();
 
-    public BanyanDBStorageClient(String host, int port) {
-        this.client = new BanyanDBClient(host, port);
+    public BanyanDBStorageClient(String... targets) {
+        this.client = new BanyanDBClient(targets);
     }
 
     @Override
@@ -94,6 +101,27 @@ public class BanyanDBStorageClient implements Client, HealthCheckable {
         }
     }
 
+    public PropertyStore.DeleteResult deleteProperty(String group, String name, String id, String... tags) throws IOException {
+        try {
+            PropertyStore.DeleteResult result = this.client.deleteProperty(group, name, id, tags);
+            this.healthChecker.health();
+            return result;
+        } catch (BanyanDBException ex) {
+            healthChecker.unHealth(ex);
+            throw new IOException("fail to delete property", ex);
+        }
+    }
+
+    public void keepAliveProperty(long leaseId) throws IOException {
+        try {
+            this.client.keepAliveProperty(leaseId);
+            this.healthChecker.health();
+        } catch (BanyanDBException ex) {
+            healthChecker.unHealth(ex);
+            throw new IOException("fail to keep alive property", ex);
+        }
+    }
+
     public StreamQueryResponse query(StreamQuery q) throws IOException {
         try {
             StreamQueryResponse response = this.client.query(q);
@@ -116,9 +144,33 @@ public class BanyanDBStorageClient implements Client, HealthCheckable {
         }
     }
 
+    public TopNQueryResponse query(TopNQuery q) throws IOException {
+        try {
+            TopNQueryResponse response = this.client.query(q);
+            this.healthChecker.health();
+            return response;
+        } catch (BanyanDBException ex) {
+            healthChecker.unHealth(ex);
+            throw new IOException("fail to query topn", ex);
+        }
+    }
+
+    /**
+     * PropertyStore.Strategy is default to {@link PropertyStore.Strategy#MERGE}
+     */
     public void define(Property property) throws IOException {
         try {
             this.client.apply(property);
+            this.healthChecker.health();
+        } catch (BanyanDBException ex) {
+            healthChecker.unHealth(ex);
+            throw new IOException("fail to define property", ex);
+        }
+    }
+
+    public void define(Property property, PropertyStore.Strategy strategy) throws IOException {
+        try {
+            this.client.apply(property, strategy);
             this.healthChecker.health();
         } catch (BanyanDBException ex) {
             healthChecker.unHealth(ex);
@@ -144,6 +196,37 @@ public class BanyanDBStorageClient implements Client, HealthCheckable {
             healthChecker.unHealth(ex);
             throw new IOException("fail to define stream", ex);
         }
+    }
+
+    public void defineIfEmpty(Group group) throws IOException {
+        try {
+            try {
+                this.client.define(group);
+            } catch (AlreadyExistsException ignored) {
+            }
+            this.healthChecker.health();
+        } catch (BanyanDBException ex) {
+            healthChecker.unHealth(ex);
+            throw new IOException("fail to define group", ex);
+        }
+    }
+
+    public void define(TopNAggregation topNAggregation) throws IOException {
+        try {
+            this.client.define(topNAggregation);
+            this.healthChecker.health();
+        } catch (BanyanDBException ex) {
+            healthChecker.unHealth(ex);
+            throw new IOException("fail to define TopNAggregation", ex);
+        }
+    }
+
+    public StreamWrite createStreamWrite(String group, String name, String elementId) {
+        return this.client.createStreamWrite(group, name, elementId);
+    }
+
+    public MeasureWrite createMeasureWrite(String group, String name, long timestamp) {
+        return this.client.createMeasureWrite(group, name, timestamp);
     }
 
     public void write(StreamWrite streamWrite) {

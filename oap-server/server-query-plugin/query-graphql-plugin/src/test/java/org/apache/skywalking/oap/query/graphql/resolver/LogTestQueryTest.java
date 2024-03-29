@@ -18,7 +18,6 @@
 
 package org.apache.skywalking.oap.query.graphql.resolver;
 
-import junit.framework.TestCase;
 import org.apache.skywalking.oap.log.analyzer.provider.LogAnalyzerModuleConfig;
 import org.apache.skywalking.oap.log.analyzer.provider.LogAnalyzerModuleProvider;
 import org.apache.skywalking.oap.query.graphql.GraphQLQueryConfig;
@@ -31,18 +30,25 @@ import org.apache.skywalking.oap.server.library.module.ModuleManager;
 import org.apache.skywalking.oap.server.library.module.ModuleProvider;
 import org.apache.skywalking.oap.server.library.module.ModuleProviderHolder;
 import org.apache.skywalking.oap.server.library.module.ModuleServiceHolder;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
-public class LogTestQueryTest extends TestCase {
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
+public class LogTestQueryTest {
     @Mock
     private ModuleManager moduleManager;
 
@@ -58,7 +64,7 @@ public class LogTestQueryTest extends TestCase {
     @Mock
     private LogAnalyzerModuleConfig lalConfig;
 
-    @Before
+    @BeforeEach
     public void setup() {
         when(moduleManager.find(anyString()))
             .thenReturn(providerHolder);
@@ -128,5 +134,35 @@ public class LogTestQueryTest extends TestCase {
         assertEquals("log_count", response.getMetrics().iterator().next().getName());
         assertEquals(1, response.getMetrics().iterator().next().getValue());
         assertEquals(12312313, response.getMetrics().iterator().next().getTimestamp());
+    }
+
+    @Test
+    public void testExtractPatternedTimestamp() throws Exception {
+        when(config.isEnableLogTestTool()).thenReturn(true);
+        final LogTestQuery query = new LogTestQuery(moduleManager, config);
+        final LogTestRequest request = new LogTestRequest();
+        request.setLog("" +
+                           "{" +
+                           "  body: {" +
+                           "    json: {" +
+                           "      json: '{\"request\": \"GET /l HTTP/1.1\",\"time\": \"2023-11-02T12:39:36+00:00\",\"status\": \"404\",\"request_time\":\"0.000\"}'" +
+                           "    }" +
+                           "  }," +
+                           "  type: JSON," +
+                           "  timestamp: 12312313," +
+                           "  service: 'test'" +
+                           "}");
+        request.setDsl("" +
+                           "filter {\n" +
+                           "  json {" +
+                           "  }\n" +
+                           "  extractor {\n" +
+                           "    timestamp parsed.time as String, \"yyyy-MM-dd'T'HH:mm:ssXXX\"\n" +
+                           "  }\n" +
+                           "  sink {\n" +
+                           "  }\n" +
+                           "}");
+        final LogTestResponse response = query.test(request);
+        assertEquals(1698928776000L, response.getLog().getTimestamp());
     }
 }

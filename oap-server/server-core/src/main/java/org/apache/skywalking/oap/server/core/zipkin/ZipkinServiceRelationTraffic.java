@@ -27,11 +27,9 @@ import org.apache.skywalking.oap.server.core.analysis.metrics.Metrics;
 import org.apache.skywalking.oap.server.core.analysis.worker.MetricsStreamProcessor;
 import org.apache.skywalking.oap.server.core.remote.grpc.proto.RemoteData;
 import org.apache.skywalking.oap.server.core.source.DefaultScopeDefine;
-import org.apache.skywalking.oap.server.core.storage.ShardingAlgorithm;
 import org.apache.skywalking.oap.server.core.storage.StorageID;
 import org.apache.skywalking.oap.server.core.storage.annotation.BanyanDB;
 import org.apache.skywalking.oap.server.core.storage.annotation.Column;
-import org.apache.skywalking.oap.server.core.storage.annotation.SQLDatabase;
 import org.apache.skywalking.oap.server.core.storage.type.Convert2Entity;
 import org.apache.skywalking.oap.server.core.storage.type.Convert2Storage;
 import org.apache.skywalking.oap.server.core.storage.type.StorageBuilder;
@@ -43,7 +41,6 @@ import org.apache.skywalking.oap.server.core.storage.type.StorageBuilder;
     "serviceName",
     "remoteServiceName"
 })
-@SQLDatabase.Sharding(shardingAlgorithm = ShardingAlgorithm.NO_SHARDING)
 public class ZipkinServiceRelationTraffic extends Metrics {
 
     public static final String INDEX_NAME = "zipkin_service_relation_traffic";
@@ -52,12 +49,12 @@ public class ZipkinServiceRelationTraffic extends Metrics {
 
     @Setter
     @Getter
-    @Column(columnName = SERVICE_NAME)
+    @Column(name = SERVICE_NAME)
     @BanyanDB.SeriesID(index = 0)
     private String serviceName;
     @Setter
     @Getter
-    @Column(columnName = REMOTE_SERVICE_NAME)
+    @Column(name = REMOTE_SERVICE_NAME)
     @BanyanDB.SeriesID(index = 1)
     private String remoteServiceName;
 

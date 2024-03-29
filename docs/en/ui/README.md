@@ -8,6 +8,41 @@ The left side menu lists all available supported stacks with default dashboards.
 
 Follow the `Official Dashboards` menu to explore all default dashboards on their ways to monitor different tech stacks.
 
+## Sidebar Menu and Marketplace
+
+All available feature menu items are only listed in the marketplace(since 9.6.0). They are only visible on the Sidebar Menu when there are relative services
+being observed by various supported observation agents, such as installed language agents, service mesh platform, OTEL integration.
+
+The menu items defined in `ui-initialized-templates/menu.yaml` are the universal marketplace for all default-supported integration.
+The menu definition supports one and two levels items. The leaf menu item should have the `layer` for navigation.
+
+```yaml
+menus:
+  - name: GeneralService
+    icon: general_service
+    menus:
+      - name: Services
+        layer: GENERAL
+      - name: VisualDatabase
+        layer: VIRTUAL_DATABASE
+      - name: VisualCache
+        layer: VIRTUAL_CACHE
+      - name: VisualMQ
+        layer: VIRTUAL_MQ
+....
+- name: SelfObservability
+  icon: self_observability
+  menus:
+    - name: SkyWalkingServer
+      layer: SO11Y_OAP
+    - name: Satellite
+      layer: SO11Y_SATELLITE
+```
+
+
+The menu items would automatically pop up on the left after short period of time that at least one service was observed.
+For more details, please refer to the "uiMenuRefreshInterval" configuration item in the [backend settings](../setup/backend/configuration-vocabulary.md)
+
 ## Custom Dashboard
 
 Besides official dashboards, **Dashboards** provide customization capabilities to end-users to add new tabs/pages/widgets, and
@@ -94,6 +129,15 @@ Define the following properties of the widget:
 
 Widget provides the ability to associate with other widgets to show axis pointer with tips for the same time point, in order to help users to understand
 the connectivity among metrics.
+
+### Widget Static Link
+On the right top of every widget on the dashboard, there is a `Generate Link` option, which could generate a static 
+link to represent this widget.
+By using this link, users could share this widget, or integrate it into any 3rd party iFrame to build a 
+network operations center(NOC) dashboard on the wall easily.
+About this link, there are several customizable options
+1. `Lock Query Duration`. Set the query duration manually. It is OFF by default. 
+2. `Auto Fresh` option is ON with 6s query period and last 30 mins time range. Query period and range are customizable.
 
 ## Settings
 

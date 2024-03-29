@@ -18,10 +18,11 @@ telemetry:
 You may also set `Prometheus` to enable them. For more information, refer to the details below.
 
 ## Self Observability
-### Static IP or hostname
-SkyWalking supports collecting telemetry data into the OAP backend directly. Users could check them out through UI or
-GraphQL API.
+SkyWalking supports exposing telemetry data representing OAP running status through Prometheus endpoint.
+Users could set up OpenTelemetry collector to scrap and forward telemetry data to OAP server for further analysis, 
+eventually showing up UI or GraphQL API.
 
+### Static IP or hostname
 Add the following configuration to enable self-observability-related modules.
 
 1. Set up prometheus telemetry.
@@ -44,7 +45,7 @@ adjust the configurations below to fit your scenarios.
 
 If you deploy an OAP server cluster on Kubernetes, the oap-server instance (pod) would not have a static IP or hostname. We can leverage [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/getting-started/#kubernetes) to discover the oap-server instance, and scrape & transfer the metrics to OAP [OpenTelemetry receiver](opentelemetry-receiver.md).
 
-On how to install SkyWalking on k8s, you can refer to [Apache SkyWalking Kubernetes](https://github.com/apache/skywalking-kubernetes).
+On how to install SkyWalking on k8s, you can refer to [Apache SkyWalking Kubernetes](https://github.com/apache/skywalking-helm).
 
 Set this up following these steps:
 
@@ -57,7 +58,7 @@ Set this up following these steps:
   ```
   SW_TELEMETRY=prometheus
   SW_OTEL_RECEIVER=default
-  SW_OTEL_RECEIVER_ENABLED_OTEL_RULES=oap
+  SW_OTEL_RECEIVER_ENABLED_OTEL_METRICS_RULES=oap
   ```
 
   Here is an example to install by Apache SkyWalking Kubernetes:
@@ -75,7 +76,7 @@ Set this up following these steps:
                --set oap.ports.prometheus-port=1234 \ # <<< Expose self observability metrics port
                --set oap.env.SW_TELEMETRY=prometheus \
                --set oap.env.SW_OTEL_RECEIVER=default \ # <<< Enable Otel receiver
-               --set oap.env.SW_OTEL_RECEIVER_ENABLED_OTEL_RULES=oap # <<< Add oap analyzer for Otel metrics
+               --set oap.env.SW_OTEL_RECEIVER_ENABLED_OTEL_METRICS_RULES=oap # <<< Add oap analyzer for Otel metrics
   ```
 2. Set up OpenTelemetry Collector and config a scrape job:
 ``` yaml
@@ -95,11 +96,13 @@ Set this up following these steps:
     regex: (.+)
     replacement: $$1
 ```
-For the full example for OpenTelemetry Collector configuration and recommended version, you can refer to [showcase](https://github.com/apache/skywalking-showcase/tree/main/deploy/platform/kubernetes/feature-so11y).
+For the full example for OpenTelemetry Collector configuration and recommended version, you can refer to [showcase](https://github.com/apache/skywalking-showcase/tree/main/deploy/platform/kubernetes/templates/feature-so11y).
 
 
 
 ___
+
+Users also could leverage the Prometheus endpoint for their own Prometheus and Grafana.
 
 **NOTE**: Since Apr 21, 2021, the **Grafana** project has been relicensed to **AGPL-v3**, and is no longer licensed for Apache 2.0. Check the LICENSE details.
 The following Prometheus + Grafana solution is optional rather than recommended.

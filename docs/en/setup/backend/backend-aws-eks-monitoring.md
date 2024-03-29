@@ -3,12 +3,14 @@ SkyWalking leverages OpenTelemetry Collector with [AWS Container Insights Receiv
 [OpenTelemetry receiver](opentelemetry-receiver.md) and into the [Meter System](./../../concepts-and-designs/meter.md).
 
 ### Data flow
-1. OpenTelemetry Collector fetches metrics from EKS via [AWS Container Insights Receiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/receiver/awscontainerinsightreceiver/README.md) and pushes metrics to SkyWalking OAP Server via the OpenCensus gRPC Exporter or OpenTelemetry gRPC exporter.
+1. OpenTelemetry Collector fetches metrics from EKS via [AWS Container Insights Receiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/receiver/awscontainerinsightreceiver/README.md) and pushes metrics to SkyWalking OAP Server via OpenTelemetry gRPC exporter.
 2. The SkyWalking OAP Server parses the expression with [MAL](../../concepts-and-designs/mal.md) to filter/calculate/aggregate and store the results.
 
 ### Set up
 1. Deploy [amazon/aws-otel-collector](https://hub.docker.com/r/amazon/aws-otel-collector) with [AWS Container Insights Receiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/receiver/awscontainerinsightreceiver/README.md) to EKS
 2. Config SkyWalking [OpenTelemetry receiver](opentelemetry-receiver.md).
+
+Read [Monitoring AWS EKS and S3 with SkyWalking](https://skywalking.apache.org/blog/2023-03-12-skywalking-aws-s3-eks/) for more details
 
 ### EKS Monitoring
 [AWS Container Insights Receiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/receiver/awscontainerinsightreceiver/README.md) provides multiple dimensions metrics for EKS  cluster, node, service, etc.

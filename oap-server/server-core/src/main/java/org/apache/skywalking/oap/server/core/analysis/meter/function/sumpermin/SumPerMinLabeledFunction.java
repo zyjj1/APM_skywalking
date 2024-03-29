@@ -30,8 +30,6 @@ import org.apache.skywalking.oap.server.core.analysis.meter.function.MeterFuncti
 import org.apache.skywalking.oap.server.core.analysis.metrics.DataTable;
 import org.apache.skywalking.oap.server.core.analysis.metrics.LabeledValueHolder;
 import org.apache.skywalking.oap.server.core.analysis.metrics.Metrics;
-import org.apache.skywalking.oap.server.core.analysis.metrics.annotation.Entrance;
-import org.apache.skywalking.oap.server.core.analysis.metrics.annotation.SourceFrom;
 import org.apache.skywalking.oap.server.core.remote.grpc.proto.RemoteData;
 import org.apache.skywalking.oap.server.core.storage.StorageID;
 import org.apache.skywalking.oap.server.core.storage.annotation.BanyanDB;
@@ -48,31 +46,26 @@ public abstract class SumPerMinLabeledFunction extends Meter implements Acceptab
 
     @Setter
     @Getter
-    @Column(columnName = ENTITY_ID, length = 512)
+    @Column(name = ENTITY_ID, length = 512)
     @BanyanDB.SeriesID(index = 0)
     private String entityId;
 
     @Setter
     @Getter
-    @Column(columnName = InstanceTraffic.SERVICE_ID)
+    @Column(name = InstanceTraffic.SERVICE_ID)
     private String serviceId;
 
     @Getter
     @Setter
-    @Column(columnName = VALUE, dataType = Column.ValueDataType.LABELED_VALUE, storageOnly = true)
+    @Column(name = VALUE, dataType = Column.ValueDataType.LABELED_VALUE, storageOnly = true)
     @BanyanDB.MeasureField
     private DataTable value = new DataTable(30);
 
     @Getter
     @Setter
-    @Column(columnName = TOTAL, storageOnly = true)
+    @Column(name = TOTAL, storageOnly = true)
     @BanyanDB.MeasureField
     private DataTable total = new DataTable(30);
-
-    @Entrance
-    public final void combine(@SourceFrom DataTable value) {
-        this.total.append(value);
-    }
 
     @Override
     public void accept(MeterEntity entity, DataTable value) {
@@ -89,7 +82,7 @@ public abstract class SumPerMinLabeledFunction extends Meter implements Acceptab
     @Override
     public boolean combine(Metrics metrics) {
         final SumPerMinLabeledFunction sumPerMinLabeledFunction = (SumPerMinLabeledFunction) metrics;
-        combine(sumPerMinLabeledFunction.getTotal());
+        this.total.append(sumPerMinLabeledFunction.getTotal());
         return true;
     }
 

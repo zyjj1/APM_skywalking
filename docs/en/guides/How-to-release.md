@@ -45,7 +45,7 @@ This step is only for testing purpose. If your env is correctly set, you don't n
 ## Prepare for the release
 ```
 ./mvnw release:clean
-./mvnw release:prepare -DautoVersionSubmodules=true -Pall
+./mvnw release:prepare -DautoVersionSubmodules=true -Darguments='-Dmaven.test.skip' -Pall
 ```
 
 - Set version number as x.y.z, and tag as **v**x.y.z (The version tag must start with **v**. You will find out why this is necessary in the next step.)
@@ -54,7 +54,7 @@ _You could do a GPG signature before preparing for the release. If you need to i
 
 ## Stage the release 
 ```
-./mvnw release:perform -Dmaven.test.skip -Pall
+./mvnw release:perform -Darguments='-Dmaven.test.skip' -Pall
 ```
 
 - The release will be automatically inserted into a temporary staging repository.
@@ -95,61 +95,6 @@ if you haven't done it before.
     * Package name:  `apache-skywalking-bin-x.y.z.tar.gz`.
     * See Section "Locate and download the distribution package in Apache Nexus Staging repositories" for more details.
     * Create a `.sha512` package: `shasum -a 512 file > file.sha512`
-
-## Make the internal announcements
-Send an announcement mail in dev mail list.
-
-```
-Mail title: [ANNOUNCE] SkyWalking x.y.z test build available
-
-Mail content:
-The test build of x.y.z is available.
-
-We welcome any comments you may have, and will take all feedback into
-account if a quality vote is called for this build.
-
-Release notes:
-
- * https://github.com/apache/skywalking/blob/master/docs/en/changes/changes-x.y.z.md
-
-Release Candidate:
-
- * https://dist.apache.org/repos/dist/dev/skywalking/xxxx
- * sha512 checksums
-   - sha512xxxxyyyzzz apache-skywalking-apm-x.x.x-src.tgz
-   - sha512xxxxyyyzzz apache-skywalking-apm-bin-x.x.x.tar.gz
-
-Maven 2 staging repository:
-
- * https://repository.apache.org/content/repositories/xxxx/org/apache/skywalking/
-
-Release Tag :
-
- * (Git Tag) vx.y.z
-
-Release CommitID :
-
- * https://github.com/apache/skywalking/tree/(Git Commit ID)
- * Git submodule
-   * skywalking-ui: https://github.com/apache/skywalking-booster-ui/tree/(Git Commit ID)
-   * apm-protocol/apm-network/src/main/proto: https://github.com/apache/skywalking-data-collect-protocol/tree/(Git Commit ID)
-   * oap-server/server-query-plugin/query-graphql-plugin/src/main/resources/query-protocol https://github.com/apache/skywalking-query-protocol/tree/(Git Commit ID)
-
-Keys to verify the Release Candidate :
-
- * https://dist.apache.org/repos/dist/release/skywalking/KEYS
-
-Guide to build the release from source :
-
- * https://github.com/apache/skywalking/blob/vx.y.z/docs/en/guides/How-to-build.md
-
-A vote regarding the quality of this test build will be initiated
-within the next couple of days.
-```
-
-## Wait for at least 48 hours for test responses
-Any PMC member, committer or contributor can test the release features and provide feedback.
-Based on that, the PMC will decide whether to start the voting process.
 
 ## Call a vote in dev
 Call a vote in `dev@skywalking.apache.org`
@@ -249,7 +194,7 @@ Hi all,
 Apache SkyWalking Team is glad to announce the first release of Apache SkyWalking x.y.z.
 
 SkyWalking: APM (application performance monitor) tool for distributed systems,
-especially designed for microservices, cloud native and container-based (Docker, Kubernetes, Mesos) architectures.
+especially designed for microservices, cloud native and container-based architectures.
 
 This release contains a number of new features, bug fixes and improvements compared to
 version a.b.c(last release). The notable changes since x.y.z include:
@@ -260,13 +205,13 @@ version a.b.c(last release). The notable changes since x.y.z include:
 3. ...
 
 Please refer to the change log for the complete list of changes:
-https://github.com/apache/skywalking/blob/master/docs/en/changes/changes-x.y.z.md
+https://skywalking.apache.org/docs/main/vx.y.z/en/changes/changes/
 
 Apache SkyWalking website:
 http://skywalking.apache.org/
 
 Downloads:
-http://skywalking.apache.org/downloads/
+https://skywalking.apache.org/downloads/#SkyWalkingAPM
 
 Twitter:
 https://twitter.com/ASFSkyWalking
@@ -281,6 +226,10 @@ SkyWalking Resources:
 ```
 
 ## Publish the Docker images
+
+We have a [GitHub workflow](../../../.github/workflows/publish-docker.yaml) to automatically publish the Docker images to
+Docker Hub after you set the version from `pre-release` to `release`, all you need to do is to watch that workflow and see
+whether it succeeds, if it fails, you can use the following steps to publish the Docker images in your local machine.
 
 ```shell
 export SW_VERSION=x.y.z

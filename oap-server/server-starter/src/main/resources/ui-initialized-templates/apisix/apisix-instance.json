@@ -1,23 +1,7 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 
 [
   {
-    "id": "apisix-Instance",
+    "id": "APISIX-Instance",
     "configuration": {
       "children": [
         {
@@ -34,15 +18,16 @@
             "type": "Line",
             "step": false,
             "smooth": false,
-            "showSymbol": false,
+            "showSymbol": true,
             "showXAxis": true,
             "showYAxis": true
           },
-          "metrics": [
+          "expressions": [
             "meter_apisix_instance_http_requests"
           ],
-          "metricTypes": [
-            "readMetricsValues"
+          "metricMode": "Expression",
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES"
           ]
         },
 
@@ -60,15 +45,16 @@
             "type": "Line",
             "step": false,
             "smooth": false,
-            "showSymbol": false,
+            "showSymbol": true,
             "showXAxis": true,
             "showYAxis": true
           },
-          "metrics": [
+          "expressions": [
             "meter_apisix_instance_http_status_matched"
           ],
-          "metricTypes": [
-            "readLabeledMetricsValues"
+          "metricMode": "Expression",
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES"
           ],
           "associate": [
             {
@@ -108,15 +94,16 @@
             "type": "Line",
             "step": false,
             "smooth": false,
-            "showSymbol": false,
+            "showSymbol": true,
             "showXAxis": true,
             "showYAxis": true
           },
-          "metrics": [
+          "expressions": [
             "meter_apisix_instance_http_latency_matched"
           ],
-          "metricTypes": [
-            "readLabeledMetricsValues"
+          "metricMode": "Expression",
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES"
           ],
           "associate": [
             {
@@ -157,15 +144,16 @@
             "type": "Line",
             "step": false,
             "smooth": false,
-            "showSymbol": false,
+            "showSymbol": true,
             "showXAxis": true,
             "showYAxis": true
           },
-          "metrics": [
-            "meter_apisix_instance_bandwidth_matched"
+          "expressions": [
+            "meter_apisix_instance_bandwidth_matched/1024"
           ],
-          "metricTypes": [
-            "readLabeledMetricsValues"
+          "metricMode": "Expression",
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES"
           ],
           "associate": [
             {
@@ -189,11 +177,6 @@
             {
               "widgetId": "8"
             }
-          ],
-          "metricConfig": [
-            {
-              "calculation": "byteToKB"
-            }
           ]
         },
         {
@@ -203,17 +186,18 @@
           "h": 13,
           "i": "5",
           "type": "Widget",
-          "metricTypes": [
-            "readLabeledMetricsValues"
+          "metricMode": "Expression",
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES"
           ],
-          "metrics": [
+          "expressions": [
             "meter_apisix_instance_http_connections"
           ],
           "graph": {
             "type": "Line",
             "step": false,
             "smooth": false,
-            "showSymbol": false,
+            "showSymbol": true,
             "showXAxis": true,
             "showYAxis": true
           },
@@ -259,15 +243,16 @@
             "type": "Line",
             "step": false,
             "smooth": false,
-            "showSymbol": false,
+            "showSymbol": true,
             "showXAxis": true,
             "showYAxis": true
           },
-          "metrics": [
+          "expressions": [
             "meter_apisix_instance_http_status_unmatched"
           ],
-          "metricTypes": [
-            "readLabeledMetricsValues"
+          "metricMode": "Expression",
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES"
           ],
           "associate": [
             {
@@ -307,15 +292,16 @@
             "type": "Line",
             "step": false,
             "smooth": false,
-            "showSymbol": false,
+            "showSymbol": true,
             "showXAxis": true,
             "showYAxis": true
           },
-          "metrics": [
+          "expressions": [
             "meter_apisix_instance_http_latency_unmatched"
           ],
-          "metricTypes": [
-            "readLabeledMetricsValues"
+          "metricMode": "Expression",
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES"
           ],
           "associate": [
             {
@@ -356,15 +342,16 @@
             "type": "Line",
             "step": false,
             "smooth": false,
-            "showSymbol": false,
+            "showSymbol": true,
             "showXAxis": true,
             "showYAxis": true
           },
-          "metrics": [
-            "meter_apisix_instance_bandwidth_unmatched"
+          "expressions": [
+            "meter_apisix_instance_bandwidth_unmatched/1024"
           ],
-          "metricTypes": [
-            "readLabeledMetricsValues"
+          "metricMode": "Expression",
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES"
           ],
           "associate": [
             {
@@ -388,11 +375,6 @@
             {
               "widgetId": "8"
             }
-          ],
-          "metricConfig": [
-            {
-              "calculation": "byteToKB"
-            }
           ]
         },
 
@@ -410,20 +392,16 @@
             "type": "Line",
             "step": false,
             "smooth": false,
-            "showSymbol": false,
+            "showSymbol": true,
             "showXAxis": true,
             "showYAxis": true
           },
-          "metrics": [
-            "meter_apisix_instance_shared_dict_capacity_bytes"
+          "expressions": [
+            "meter_apisix_instance_shared_dict_capacity_bytes/1024/1024"
           ],
-          "metricTypes": [
-            "readLabeledMetricsValues"
-          ],
-          "metricConfig": [
-            {
-              "calculation": "byteToMB"
-            }
+          "metricMode": "Expression",
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES"
           ],
           "associate": [
             {
@@ -449,20 +427,16 @@
             "type": "Line",
             "step": false,
             "smooth": false,
-            "showSymbol": false,
+            "showSymbol": true,
             "showXAxis": true,
             "showYAxis": true
           },
-          "metrics": [
-            "meter_apisix_instance_shared_dict_free_space_bytes"
+          "expressions": [
+            "meter_apisix_instance_shared_dict_free_space_bytes/1024/1024"
           ],
-          "metricTypes": [
-            "readLabeledMetricsValues"
-          ],
-          "metricConfig": [
-            {
-              "calculation": "byteToMB"
-            }
+          "metricMode": "Expression",
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES"
           ],
           "associate": [
             {
@@ -487,15 +461,16 @@
             "type": "Line",
             "step": false,
             "smooth": false,
-            "showSymbol": false,
+            "showSymbol": true,
             "showXAxis": true,
             "showYAxis": true
           },
-          "metrics": [
+          "expressions": [
             "meter_apisix_instance_etcd_indexes"
           ],
-          "metricTypes": [
-            "readLabeledMetricsValues"
+          "metricMode": "Expression",
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES"
           ],
           "associate": [
           ]
@@ -518,11 +493,12 @@
             "textAlign": "center",
             "showUnit": true
           },
-          "metrics": [
-            "meter_apisix_instance_etcd_reachable"
+          "expressions": [
+            "latest(meter_apisix_instance_etcd_reachable)"
           ],
-          "metricTypes": [
-            "readMetricsValue"
+          "metricMode": "Expression",
+          "typesOfMQE": [
+            "SINGLE_VALUE"
           ],
           "associate": [
             {
@@ -552,8 +528,37 @@
       "layer": "APISIX",
       "entity": "ServiceInstance",
       "name": "APISIX-Instance",
-      "id": "apisix-Instance",
-      "isRoot": false
+      "isRoot": false,
+      "isDefault": true,
+      "expressions": [
+        "avg(meter_apisix_instance_http_status_matched{_='200'})",
+        "avg(meter_apisix_instance_http_status_matched{_='304'})",
+        "avg(meter_apisix_instance_http_status_matched{_='404'})",
+        "avg(meter_apisix_instance_http_status_matched{_='499'})",
+        "avg(meter_apisix_instance_http_status_matched{_='503'})"
+      ],
+      "expressionsConfig": [
+        {
+          "unit": "req / s",
+          "label": "HTTP Status 200"
+        },
+        {
+          "unit": "req / s",
+          "label": "HTTP Status 304"
+        },
+        {
+          "unit": "req / s",
+          "label": "HTTP Status 404"
+        },
+        {
+          "unit": "req / s",
+          "label": "HTTP Status 499"
+        },
+        {
+          "unit": "req / s",
+          "label": "HTTP Status 503"
+        }
+      ]
     }
   }
 ]

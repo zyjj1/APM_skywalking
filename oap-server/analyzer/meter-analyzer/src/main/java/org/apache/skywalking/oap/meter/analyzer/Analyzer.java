@@ -84,7 +84,7 @@ public class Analyzer {
                                  final String filterExpression,
                                  final String expression,
                                  final MeterSystem meterSystem) {
-        Expression e = DSL.parse(expression);
+        Expression e = DSL.parse(metricName, expression);
         FilterExpression filter = null;
         if (!Strings.isNullOrEmpty(filterExpression)) {
             filter = new FilterExpression(filterExpression);
@@ -324,7 +324,7 @@ public class Analyzer {
         metrics.setTimeBucket(TimeBucket.getMinuteTimeBucket(System.currentTimeMillis()));
         metrics.setSourceServiceId(entity.sourceServiceId());
         metrics.setDestServiceId(entity.destServiceId());
-        metrics.getComponentIds().add(0);
+        metrics.getComponentIds().add(entity.getComponentId());
         metrics.setEntityId(entity.id());
         MetricsStreamProcessor.getInstance().in(metrics);
     }
@@ -334,7 +334,7 @@ public class Analyzer {
         metrics.setTimeBucket(TimeBucket.getMinuteTimeBucket(System.currentTimeMillis()));
         metrics.setSourceServiceId(entity.sourceServiceId());
         metrics.setDestServiceId(entity.destServiceId());
-        metrics.getComponentIds().add(0);
+        metrics.getComponentIds().add(entity.getComponentId());
         metrics.setEntityId(entity.id());
         MetricsStreamProcessor.getInstance().in(metrics);
     }

@@ -25,11 +25,9 @@ import org.apache.skywalking.oap.server.core.analysis.Stream;
 import org.apache.skywalking.oap.server.core.analysis.metrics.Metrics;
 import org.apache.skywalking.oap.server.core.analysis.worker.MetricsStreamProcessor;
 import org.apache.skywalking.oap.server.core.remote.grpc.proto.RemoteData;
-import org.apache.skywalking.oap.server.core.storage.ShardingAlgorithm;
 import org.apache.skywalking.oap.server.core.storage.StorageID;
 import org.apache.skywalking.oap.server.core.storage.annotation.BanyanDB;
 import org.apache.skywalking.oap.server.core.storage.annotation.Column;
-import org.apache.skywalking.oap.server.core.storage.annotation.SQLDatabase;
 import org.apache.skywalking.oap.server.core.storage.type.Convert2Entity;
 import org.apache.skywalking.oap.server.core.storage.type.Convert2Storage;
 import org.apache.skywalking.oap.server.core.storage.type.StorageBuilder;
@@ -50,7 +48,6 @@ import static org.apache.skywalking.oap.server.core.source.DefaultScopeDefine.SE
         "serviceId",
         "label"
 })
-@SQLDatabase.Sharding(shardingAlgorithm = ShardingAlgorithm.NO_SHARDING)
 public class ServiceLabelRecord extends Metrics {
 
     public static final String INDEX_NAME = "service_label";
@@ -58,10 +55,10 @@ public class ServiceLabelRecord extends Metrics {
     public static final String LABEL = "label";
 
     @BanyanDB.SeriesID(index = 0)
-    @Column(columnName = SERVICE_ID)
+    @Column(name = SERVICE_ID)
     private String serviceId;
     @BanyanDB.SeriesID(index = 1)
-    @Column(columnName = LABEL, length = 50)
+    @Column(name = LABEL, length = 50)
     private String label;
 
     @Override

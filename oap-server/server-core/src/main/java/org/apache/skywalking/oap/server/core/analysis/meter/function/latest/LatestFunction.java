@@ -30,9 +30,6 @@ import org.apache.skywalking.oap.server.core.analysis.meter.function.AcceptableV
 import org.apache.skywalking.oap.server.core.analysis.meter.function.MeterFunction;
 import org.apache.skywalking.oap.server.core.analysis.metrics.LongValueHolder;
 import org.apache.skywalking.oap.server.core.analysis.metrics.Metrics;
-import org.apache.skywalking.oap.server.core.analysis.metrics.annotation.Entrance;
-import org.apache.skywalking.oap.server.core.analysis.metrics.annotation.SourceFrom;
-import org.apache.skywalking.oap.server.core.query.sql.Function;
 import org.apache.skywalking.oap.server.core.remote.grpc.proto.RemoteData;
 import org.apache.skywalking.oap.server.core.storage.StorageID;
 import org.apache.skywalking.oap.server.core.storage.annotation.BanyanDB;
@@ -48,7 +45,7 @@ public abstract class LatestFunction extends Meter implements AcceptableValue<Lo
 
     @Setter
     @Getter
-    @Column(columnName = ENTITY_ID, length = 512)
+    @Column(name = ENTITY_ID, length = 512)
     @BanyanDB.SeriesID(index = 0)
     private String entityId;
 
@@ -57,12 +54,12 @@ public abstract class LatestFunction extends Meter implements AcceptableValue<Lo
      */
     @Setter
     @Getter
-    @Column(columnName = InstanceTraffic.SERVICE_ID)
+    @Column(name = InstanceTraffic.SERVICE_ID)
     private String serviceId;
 
     @Getter
     @Setter
-    @Column(columnName = VALUE, dataType = Column.ValueDataType.COMMON_VALUE, function = Function.Latest)
+    @Column(name = VALUE, dataType = Column.ValueDataType.COMMON_VALUE)
     @BanyanDB.MeasureField
     private long value;
 
@@ -73,15 +70,10 @@ public abstract class LatestFunction extends Meter implements AcceptableValue<Lo
         this.value = value;
     }
 
-    @Entrance
-    public final void combine(@SourceFrom long value) {
-        this.value = value;
-    }
-
     @Override
     public final boolean combine(Metrics metrics) {
         LatestFunction latestFunction = (LatestFunction) metrics;
-        combine(latestFunction.value);
+        this.value = latestFunction.value;
         return true;
     }
 

@@ -1,20 +1,3 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 [
   {
     "id": "Mesh-Control-Plane-Service",
@@ -36,16 +19,13 @@
             "showXAxis": true,
             "showYAxis": true
           },
-          "standard": {
-            "unit": "%"
-          },
-          "metrics": [
+          "metricMode": "Expression",
+          "expressions": [
             "meter_istio_cpu"
           ],
-          "metricTypes": [
-            "readMetricsValues"
-          ],
-          "moved": false
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES"
+          ]
         },
         {
           "x": 18,
@@ -63,14 +43,13 @@
             "showXAxis": true,
             "showYAxis": true
           },
-          "standard": {},
-          "metrics": [
+          "metricMode": "Expression",
+          "expressions": [
             "meter_istio_go_goroutines"
           ],
-          "metricTypes": [
-            "readMetricsValues"
-          ],
-          "moved": false
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES"
+          ]
         },
         {
           "x": 0,
@@ -88,14 +67,13 @@
             "showXAxis": true,
             "showYAxis": true
           },
-          "standard": {},
-          "metrics": [
+          "metricMode": "Expression",
+          "expressions": [
             "meter_istio_pilot_version"
           ],
-          "metricTypes": [
-            "readLabeledMetricsValues"
-          ],
-          "moved": false
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES"
+          ]
         },
         {
           "x": 6,
@@ -113,48 +91,37 @@
             "showXAxis": true,
             "showYAxis": true
           },
-          "standard": {
-            "0": "1",
-            "1": "0",
-            "2": "4",
-            "3": "8",
-            "4": "5",
-            "5": "7",
-            "6": "6",
-            "unit": "MB",
-            "divide": "1048576"
-          },
-          "metrics": [
-            "meter_istio_go_stack_inuse",
-            "meter_istio_virtual_memory",
-            "meter_istio_go_alloc",
-            "meter_istio_resident_memory",
-            "meter_istio_go_heap_inuse"
-          ],
-          "metricTypes": [
-            "readMetricsValues",
-            "readMetricsValues",
-            "readMetricsValues",
-            "readMetricsValues",
-            "readMetricsValues"
-          ],
-          "moved": false,
           "metricConfig": [
             {
-              "calculation": "byteToMB"
+              "label": "Go Stack In Use"
             },
             {
-              "calculation": "byteToMB"
+              "label": "Virtual Memory"
             },
             {
-              "calculation": "byteToMB"
+              "label": "Go Alloc"
             },
             {
-              "calculation": "byteToMB"
+              "label": "Resident Memory"
             },
             {
-              "calculation": "byteToMB"
+              "label": "Go Heap In Use"
             }
+          ],
+          "metricMode": "Expression",
+          "expressions": [
+            "meter_istio_go_stack_inuse/1024/1024",
+            "meter_istio_virtual_memory/1024/1024",
+            "meter_istio_go_alloc/1024/1024",
+            "meter_istio_resident_memory/1024/1024",
+            "meter_istio_go_heap_inuse/1024/1024"
+          ],
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES",
+            "TIME_SERIES_VALUES",
+            "TIME_SERIES_VALUES",
+            "TIME_SERIES_VALUES",
+            "TIME_SERIES_VALUES"
           ]
         },
         {
@@ -173,22 +140,21 @@
             "showXAxis": true,
             "showYAxis": true
           },
-          "standard": {},
-          "metrics": [
+          "metricMode": "Expression",
+          "expressions": [
             "meter_istio_pilot_xds_cds_reject",
             "meter_istio_pilot_xds_eds_reject",
             "meter_istio_pilot_xds_rds_reject",
             "meter_istio_pilot_xds_lds_reject",
             "meter_istio_pilot_xds_write_timeout"
           ],
-          "metricTypes": [
-            "readMetricsValues",
-            "readMetricsValues",
-            "readMetricsValues",
-            "readMetricsValues",
-            "readMetricsValues"
-          ],
-          "moved": false
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES",
+            "TIME_SERIES_VALUES",
+            "TIME_SERIES_VALUES",
+            "TIME_SERIES_VALUES",
+            "TIME_SERIES_VALUES"
+          ]
         },
         {
           "x": 16,
@@ -206,16 +172,13 @@
             "showXAxis": true,
             "showYAxis": true
           },
-          "standard": {
-            "unit": "%"
-          },
-          "metrics": [
+          "metricMode": "Expression",
+          "expressions": [
             "meter_istio_pilot_proxy_push_percentile"
           ],
-          "metricTypes": [
-            "readLabeledMetricsValues"
-          ],
-          "moved": false
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES"
+          ]
         },
         {
           "x": 0,
@@ -231,14 +194,13 @@
             "type": "Bar",
             "showBackground": true
           },
-          "standard": {},
-          "metrics": [
+          "metricMode": "Expression",
+          "expressions": [
             "meter_istio_pilot_xds_pushes"
           ],
-          "metricTypes": [
-            "readLabeledMetricsValues"
-          ],
-          "moved": false
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES"
+          ]
         },
         {
           "x": 12,
@@ -256,14 +218,13 @@
             "showXAxis": true,
             "showYAxis": true
           },
-          "standard": {},
-          "metrics": [
+          "metricMode": "Expression",
+          "expressions": [
             "meter_istio_sidecar_injection_success_total"
           ],
-          "metricTypes": [
-            "readMetricsValues"
-          ],
-          "moved": false
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES"
+          ]
         },
         {
           "x": 12,
@@ -281,18 +242,17 @@
             "showXAxis": true,
             "showYAxis": true
           },
-          "standard": {},
-          "metrics": [
+          "metricMode": "Expression",
+          "expressions": [
             "meter_istio_pilot_xds",
             "meter_istio_pilot_services",
             "meter_istio_pilot_virt_services"
           ],
-          "metricTypes": [
-            "readMetricsValues",
-            "readMetricsValues",
-            "readMetricsValues"
-          ],
-          "moved": false
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES",
+            "TIME_SERIES_VALUES",
+            "TIME_SERIES_VALUES"
+          ]
         },
         {
           "x": 0,
@@ -308,20 +268,19 @@
             "type": "Line",
             "step": false,
             "smooth": false,
-            "showSymbol": false,
+            "showSymbol": true,
             "showXAxis": true,
             "showYAxis": true
           },
-          "standard": {},
-          "metrics": [
+          "metricMode": "Expression",
+          "expressions": [
             "meter_istio_galley_validation_passed",
             "meter_istio_galley_validation_failed"
           ],
-          "metricTypes": [
-            "readMetricsValues",
-            "readMetricsValues"
-          ],
-          "moved": false
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES",
+            "TIME_SERIES_VALUES"
+          ]
         },
         {
           "x": 0,
@@ -337,20 +296,19 @@
             "type": "Bar",
             "showBackground": true
           },
-          "standard": {},
-          "metrics": [
+          "metricMode": "Expression",
+          "expressions": [
             "meter_istio_pilot_conflict_ol_tcp_tcp",
             "meter_istio_pilot_conflict_il",
             "meter_istio_pilot_conflict_ol_tcp_http",
             "meter_istio_pilot_conflict_ol_http_tcp"
           ],
-          "metricTypes": [
-            "readMetricsValues",
-            "readMetricsValues",
-            "readMetricsValues",
-            "readMetricsValues"
-          ],
-          "moved": false
+          "typesOfMQE": [
+            "TIME_SERIES_VALUES",
+            "TIME_SERIES_VALUES",
+            "TIME_SERIES_VALUES",
+            "TIME_SERIES_VALUES"
+          ]
         }
       ],
       "layer": "MESH_CP",

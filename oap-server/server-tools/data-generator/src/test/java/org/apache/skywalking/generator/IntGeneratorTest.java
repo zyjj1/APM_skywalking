@@ -19,8 +19,8 @@
 
  package org.apache.skywalking.generator;
 
-import static org.junit.Assert.assertEquals;
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
 
 public class IntGeneratorTest {
     @Test
@@ -30,7 +30,7 @@ public class IntGeneratorTest {
         builder.setMax(1L);
         final IntGenerator generator = builder.build();
         for (int i = 0; i < 100; i++) {
-            assertEquals(1, generator.next().intValue());
+            assertEquals(1, generator.next(null).intValue());
         }
     }
 }

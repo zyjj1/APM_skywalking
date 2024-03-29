@@ -18,15 +18,10 @@
 
 package org.apache.skywalking.oap.server.cluster.plugin.kubernetes;
 
-import io.kubernetes.client.openapi.models.V1ObjectMeta;
-import io.kubernetes.client.openapi.models.V1Pod;
-import io.kubernetes.client.openapi.models.V1PodStatus;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import io.fabric8.kubernetes.api.model.ObjectMeta;
+import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.PodCondition;
+import io.fabric8.kubernetes.api.model.PodStatus;
 import lombok.Getter;
 import org.apache.skywalking.oap.server.core.CoreModule;
 import org.apache.skywalking.oap.server.core.cluster.ClusterCoordinator;
@@ -38,41 +33,39 @@ import org.apache.skywalking.oap.server.library.module.ModuleManager;
 import org.apache.skywalking.oap.server.library.module.ModuleProvider;
 import org.apache.skywalking.oap.server.library.module.ModuleProviderHolder;
 import org.apache.skywalking.oap.server.library.module.ModuleServiceHolder;
-import org.apache.skywalking.oap.server.library.module.ModuleStartException;
 import org.apache.skywalking.oap.server.telemetry.TelemetryModule;
 import org.apache.skywalking.oap.server.telemetry.api.MetricsCreator;
 import org.apache.skywalking.oap.server.telemetry.none.MetricsCreatorNoop;
 import org.apache.skywalking.oap.server.telemetry.none.NoneTelemetryProvider;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.api.support.membermodification.MemberModifier;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.powermock.reflect.Whitebox;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
-import static org.powermock.api.mockito.PowerMockito.when;
+import static org.mockito.Mockito.when;
+import static uk.org.webcompere.systemstubs.SystemStubs.withEnvironmentVariable;
 
-@RunWith(PowerMockRunner.class)
-@PowerMockIgnore({
-    "com.sun.org.apache.xerces.*",
-    "javax.xml.*",
-    "org.xml.*",
-    "javax.management.*",
-    "org.w3c.*"
-})
-@PrepareForTest({NamespacedPodListInformer.class})
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 public class KubernetesCoordinatorTest {
-
     public static final String LOCAL_HOST = "127.0.0.1";
     public static final String REMOTE_HOST = "127.0.0.2";
     public static final Integer GRPC_PORT = 11800;
@@ -83,26 +76,23 @@ public class KubernetesCoordinatorTest {
     private ModuleManager moduleManager;
     @Mock
     private NoneTelemetryProvider telemetryProvider;
-    private NamespacedPodListInformer informer;
     private ModuleProvider providerA;
-    private ModuleProvider providerB;
     private Address addressA;
     private Address addressB;
     private KubernetesCoordinator coordinatorA;
     private KubernetesCoordinator coordinatorB;
-    private V1Pod podA;
-    private V1Pod podB;
+    private Pod podA;
+    private Pod podB;
 
-    @Before
-    public void prepare() throws ModuleStartException {
-
+    @BeforeEach
+    public void prepare() {
         Mockito.when(telemetryProvider.getService(MetricsCreator.class))
                .thenReturn(new MetricsCreatorNoop());
         TelemetryModule telemetryModule = Mockito.spy(TelemetryModule.class);
         Whitebox.setInternalState(telemetryModule, "loadedProvider", telemetryProvider);
-        informer = PowerMockito.mock(NamespacedPodListInformer.class);
+        NamespacedPodListInformer informer = mock(NamespacedPodListInformer.class);
         Whitebox.setInternalState(NamespacedPodListInformer.class, "INFORMER", informer);
-        Mockito.when(moduleManager.find(TelemetryModule.NAME)).thenReturn(telemetryModule);
+        when(moduleManager.find(TelemetryModule.NAME)).thenReturn(telemetryModule);
         when(moduleManager.find(CoreModule.NAME)).thenReturn(mock(ModuleProviderHolder.class));
         when(moduleManager.find(CoreModule.NAME).provider()).thenReturn(mock(ModuleServiceHolder.class));
         when(moduleManager.find(CoreModule.NAME).provider().getService(ConfigService.class)).thenReturn(
@@ -110,57 +100,60 @@ public class KubernetesCoordinatorTest {
         when(moduleManager.find(CoreModule.NAME).provider().getService(ConfigService.class).getGRPCPort()).thenReturn(
             GRPC_PORT);
 
-        providerA = createProvider(SELF_UID);
-        providerB = createProvider(REMOTE_UID);
         addressA = new Address(LOCAL_HOST, GRPC_PORT, true);
         addressB = new Address(REMOTE_HOST, GRPC_PORT, true);
         podA = mockPod(SELF_UID, LOCAL_HOST);
         podB = mockPod(REMOTE_UID, REMOTE_HOST);
-        coordinatorA = getClusterCoordinator(providerA);
-        coordinatorB = getClusterCoordinator(providerB);
-        coordinatorA.start();
-        coordinatorB.start();
     }
 
     @Test
     public void queryRemoteNodesWhenInformerNotwork() throws Exception {
-        KubernetesCoordinator coordinator = getClusterCoordinator(providerA);
-        MemberModifier.field(KubernetesCoordinator.class, "uid").set(coordinatorA, SELF_UID);
-        PowerMockito.doReturn(Optional.empty()).when(NamespacedPodListInformer.INFORMER).listPods();
-        List<RemoteInstance> remoteInstances = Whitebox.invokeMethod(coordinator, "queryRemoteNodes");
-        Assert.assertEquals(1, remoteInstances.size());
-        Assert.assertEquals(addressA, remoteInstances.get(0).getAddress());
+        withEnvironmentVariable(SELF_UID, SELF_UID + "0").execute(() -> {
+            providerA = createProvider(SELF_UID);
+            coordinatorA = getClusterCoordinator(providerA);
+            coordinatorA.start();
+        });
 
+        KubernetesCoordinator coordinator = getClusterCoordinator(providerA);
+        doReturn(Optional.empty()).when(NamespacedPodListInformer.INFORMER).listPods();
+        List<RemoteInstance> remoteInstances = Whitebox.invokeMethod(coordinator, "queryRemoteNodes");
+        Assertions.assertEquals(1, remoteInstances.size());
+        Assertions.assertEquals(addressA, remoteInstances.get(0).getAddress());
     }
 
     @Test
     public void queryRemoteNodesWhenInformerWork() throws Exception {
-        ModuleProvider provider = createProvider(SELF_UID + "0");
-        KubernetesCoordinator coordinator = getClusterCoordinator(provider);
-        coordinator.start();
-        MemberModifier.field(KubernetesCoordinator.class, "uid").set(coordinator, SELF_UID + "0");
-        PowerMockito.doReturn(Optional.of(mockPodList())).when(NamespacedPodListInformer.INFORMER).listPods();
-        List<RemoteInstance> remoteInstances = Whitebox.invokeMethod(coordinator, "queryRemoteNodes");
-        Assert.assertEquals(5, remoteInstances.size());
-        List<RemoteInstance> self = remoteInstances.stream()
-                                                   .filter(item -> item.getAddress().isSelf())
-                                                   .collect(Collectors.toList());
-        List<RemoteInstance> others = remoteInstances.stream()
-                                                     .filter(item -> !item.getAddress().isSelf())
-                                                     .collect(Collectors.toList());
+        withEnvironmentVariable(SELF_UID + "0", SELF_UID + "0")
+                .execute(() -> {
+                    ModuleProvider provider = createProvider(SELF_UID + "0");
+                    KubernetesCoordinator coordinator = getClusterCoordinator(provider);
+                    coordinator.start();
+                    doReturn(Optional.of(mockPodList())).when(NamespacedPodListInformer.INFORMER).listPods();
+                    List<RemoteInstance> remoteInstances = Whitebox.invokeMethod(coordinator, "queryRemoteNodes");
+                    Assertions.assertEquals(5, remoteInstances.size());
+                    List<RemoteInstance> self = remoteInstances.stream()
+                            .filter(item -> item.getAddress().isSelf())
+                            .collect(Collectors.toList());
+                    List<RemoteInstance> others = remoteInstances.stream()
+                            .filter(item -> !item.getAddress().isSelf())
+                            .collect(Collectors.toList());
 
-        Assert.assertEquals(1, self.size());
-        Assert.assertEquals(4, others.size());
-
+                    Assertions.assertEquals(1, self.size());
+                    Assertions.assertEquals(4, others.size());
+                });
     }
 
     @Test
     public void registerRemote() throws Exception {
         RemoteInstance instance = new RemoteInstance(addressA);
-        MemberModifier.field(KubernetesCoordinator.class, "uid").set(coordinatorA, SELF_UID);
-        PowerMockito.doReturn(Optional.of(Collections.singletonList(podA)))
-                    .when(NamespacedPodListInformer.INFORMER)
-                    .listPods();
+        withEnvironmentVariable(SELF_UID, SELF_UID).execute(() -> {
+            providerA = createProvider(SELF_UID);
+            coordinatorA = getClusterCoordinator(providerA);
+            coordinatorA.start();
+        });
+        doReturn(Optional.of(Collections.singletonList(podA)))
+                .when(NamespacedPodListInformer.INFORMER)
+                .listPods();
 
         ClusterMockWatcher watcher = new ClusterMockWatcher();
         coordinatorA.registerWatcher(watcher);
@@ -178,13 +171,23 @@ public class KubernetesCoordinatorTest {
 
     @Test
     public void registerRemoteOfReceiver() throws Exception {
-        MemberModifier.field(KubernetesCoordinator.class, "uid").set(coordinatorB, REMOTE_UID);
+        withEnvironmentVariable(SELF_UID, SELF_UID + "0").execute(() -> {
+            providerA = createProvider(SELF_UID);
+            coordinatorA = getClusterCoordinator(providerA);
+            coordinatorA.start();
+        });
+        withEnvironmentVariable(REMOTE_UID, REMOTE_UID).execute(() -> {
+            ModuleProvider providerB = createProvider(REMOTE_UID);
+            coordinatorB = getClusterCoordinator(providerB);
+        });
+        coordinatorB.start();
+
         ClusterMockWatcher watcherB = new ClusterMockWatcher();
         coordinatorB.registerWatcher(watcherB);
 
-        PowerMockito.doReturn(Optional.of(Collections.singletonList(podA)))
-                    .when(NamespacedPodListInformer.INFORMER)
-                    .listPods();
+        doReturn(Optional.of(Collections.singletonList(podA)))
+                .when(NamespacedPodListInformer.INFORMER)
+                .listPods();
         RemoteInstance instance = new RemoteInstance(addressA);
         coordinatorA.registerRemote(instance);
         KubernetesCoordinator.K8sResourceEventHandler listener = coordinatorB.new K8sResourceEventHandler();
@@ -201,16 +204,25 @@ public class KubernetesCoordinatorTest {
 
     @Test
     public void registerRemoteOfCluster() throws Exception {
-        MemberModifier.field(KubernetesCoordinator.class, "uid").set(coordinatorA, SELF_UID);
+        withEnvironmentVariable(SELF_UID, SELF_UID).execute(() -> {
+            providerA = createProvider(SELF_UID);
+            coordinatorA = getClusterCoordinator(providerA);
+            coordinatorA.start();
+        });
+        withEnvironmentVariable(REMOTE_UID, REMOTE_UID).execute(() -> {
+            ModuleProvider providerB = createProvider(REMOTE_UID);
+            coordinatorB = getClusterCoordinator(providerB);
+        });
+        coordinatorB.start();
+
         ClusterMockWatcher watcherA = new ClusterMockWatcher();
         coordinatorA.registerWatcher(watcherA);
-        MemberModifier.field(KubernetesCoordinator.class, "uid").set(coordinatorB, REMOTE_UID);
         ClusterMockWatcher watcherB = new ClusterMockWatcher();
         coordinatorB.registerWatcher(watcherB);
 
-        PowerMockito.doReturn(Optional.of(Arrays.asList(podA, podB)))
-                    .when(NamespacedPodListInformer.INFORMER)
-                    .listPods();
+        doReturn(Optional.of(Arrays.asList(podA, podB)))
+                .when(NamespacedPodListInformer.INFORMER)
+                .listPods();
         RemoteInstance instanceA = new RemoteInstance(addressA);
         RemoteInstance instanceB = new RemoteInstance(addressB);
         coordinatorA.registerRemote(instanceA);
@@ -234,17 +246,26 @@ public class KubernetesCoordinatorTest {
 
     @Test
     public void deregisterRemoteOfCluster() throws Exception {
-        MemberModifier.field(KubernetesCoordinator.class, "uid").set(coordinatorA, SELF_UID);
+        withEnvironmentVariable(SELF_UID, SELF_UID).execute(() -> {
+            providerA = createProvider(SELF_UID);
+            coordinatorA = getClusterCoordinator(providerA);
+            coordinatorA.start();
+        });
+        withEnvironmentVariable(REMOTE_UID, REMOTE_UID).execute(() -> {
+            ModuleProvider providerB = createProvider(REMOTE_UID);
+            coordinatorB = getClusterCoordinator(providerB);
+        });
+        coordinatorB.start();
+
         ClusterMockWatcher watcherA = new ClusterMockWatcher();
         coordinatorA.registerWatcher(watcherA);
 
-        MemberModifier.field(KubernetesCoordinator.class, "uid").set(coordinatorB, REMOTE_UID);
         ClusterMockWatcher watcherB = new ClusterMockWatcher();
         coordinatorB.registerWatcher(watcherB);
 
-        PowerMockito.doReturn(Optional.of(Arrays.asList(podA, podB)))
-                    .when(NamespacedPodListInformer.INFORMER)
-                    .listPods();
+        doReturn(Optional.of(Arrays.asList(podA, podB)))
+                .when(NamespacedPodListInformer.INFORMER)
+                .listPods();
         RemoteInstance instanceA = new RemoteInstance(addressA);
         RemoteInstance instanceB = new RemoteInstance(addressB);
         coordinatorA.registerRemote(instanceA);
@@ -267,9 +288,9 @@ public class KubernetesCoordinatorTest {
 
         // deregister A
         listenerB.onDelete(podA, false);
-        PowerMockito.doReturn(Optional.of(Collections.singletonList(podB)))
-                    .when(NamespacedPodListInformer.INFORMER)
-                    .listPods();
+        doReturn(Optional.of(Collections.singletonList(podB)))
+                .when(NamespacedPodListInformer.INFORMER)
+                .listPods();
         // only B
         remoteInstancesOfB = watcherB.getRemoteInstances();
         assertEquals(1, remoteInstancesOfB.size());
@@ -280,8 +301,7 @@ public class KubernetesCoordinatorTest {
         assertTrue(address.isSelf());
     }
 
-    private ClusterModuleKubernetesProvider createProvider(String uidEnvName)
-        throws ModuleStartException {
+    private ClusterModuleKubernetesProvider createProvider(String uidEnvName) {
         ClusterModuleKubernetesProvider provider = new ClusterModuleKubernetesProvider();
 
         ClusterModuleKubernetesConfig config = new ClusterModuleKubernetesConfig();
@@ -301,24 +321,26 @@ public class KubernetesCoordinatorTest {
         return (KubernetesCoordinator) provider.getService(ClusterCoordinator.class);
     }
 
-    private V1Pod mockPod(String uid, String ip) {
-        V1Pod v1Pod = new V1Pod();
-        v1Pod.setMetadata(new V1ObjectMeta());
-        v1Pod.setStatus(new V1PodStatus());
+    private Pod mockPod(String uid, String ip) {
+        Pod v1Pod = new Pod();
+        v1Pod.setMetadata(new ObjectMeta());
+        v1Pod.setStatus(new PodStatus());
         v1Pod.getStatus().setPhase("Running");
         v1Pod.getMetadata().setUid(uid);
         v1Pod.getStatus().setPodIP(ip);
+        v1Pod.getStatus().setConditions(List.of(new PodCondition("", "", "", "", "True", "Ready")));
         return v1Pod;
     }
 
-    private List<V1Pod> mockPodList() {
-        List<V1Pod> pods = new ArrayList<>();
+    private List<Pod> mockPodList() {
+        List<Pod> pods = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
-            V1Pod v1Pod = new V1Pod();
-            v1Pod.setMetadata(new V1ObjectMeta());
-            v1Pod.setStatus(new V1PodStatus());
+            Pod v1Pod = new Pod();
+            v1Pod.setMetadata(new ObjectMeta());
+            v1Pod.setStatus(new PodStatus());
             v1Pod.getMetadata().setUid(SELF_UID + i);
             v1Pod.getStatus().setPodIP(LOCAL_HOST);
+            v1Pod.getStatus().setConditions(List.of(new PodCondition("", "", "", "", "True", "Ready")));
             pods.add(v1Pod);
         }
         return pods;
@@ -343,7 +365,7 @@ public class KubernetesCoordinatorTest {
         assertTrue(otherExist);
     }
 
-    class ClusterMockWatcher implements ClusterWatcher {
+    static class ClusterMockWatcher implements ClusterWatcher {
         @Getter
         private List<RemoteInstance> remoteInstances = new ArrayList<>();
 

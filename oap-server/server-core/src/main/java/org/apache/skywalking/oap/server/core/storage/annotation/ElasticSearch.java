@@ -18,6 +18,7 @@
 
 package org.apache.skywalking.oap.server.core.storage.annotation;
 
+import org.apache.skywalking.oap.server.core.analysis.record.Record;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -94,7 +95,15 @@ public @interface ElasticSearch {
          * between these 2 storage modes rather than use this alias.
          */
         @Deprecated
-        String columnAlias();
+        String legacyName();
 
+    }
+
+    /**
+     * Routing defines a field of {@link Record} to control the sharding policy.
+     */
+    @Target(ElementType.FIELD)
+    @Retention(RetentionPolicy.RUNTIME)
+    @interface Routing {
     }
 }

@@ -18,8 +18,8 @@
 
 package org.apache.skywalking.oap.server.core.profiling.ebpf.storage;
 
+import com.google.common.base.Charsets;
 import com.google.common.hash.Hashing;
-import com.linecorp.armeria.internal.shaded.guava.base.Charsets;
 import lombok.Data;
 import org.apache.skywalking.oap.server.core.analysis.Stream;
 import org.apache.skywalking.oap.server.core.analysis.record.Record;
@@ -50,18 +50,18 @@ public class EBPFProfilingDataRecord extends Record {
     public static final String DATA_BINARY = "dump_binary";
     public static final String UPLOAD_TIME = "upload_time";
 
-    @Column(columnName = TASK_ID, length = 600)
+    @Column(name = TASK_ID)
     @BanyanDB.SeriesID(index = 0)
     private String taskId;
-    @Column(columnName = SCHEDULE_ID, length = 600)
+    @Column(name = SCHEDULE_ID)
     private String scheduleId;
-    @Column(columnName = STACK_ID_LIST)
+    @Column(name = STACK_ID_LIST)
     private String stackIdList;
-    @Column(columnName = TARGET_TYPE)
+    @Column(name = TARGET_TYPE)
     private int targetType;
-    @Column(columnName = DATA_BINARY, storageOnly = true)
+    @Column(name = DATA_BINARY, storageOnly = true)
     private byte[] dataBinary;
-    @Column(columnName = UPLOAD_TIME)
+    @Column(name = UPLOAD_TIME)
     private long uploadTime;
 
     @Override

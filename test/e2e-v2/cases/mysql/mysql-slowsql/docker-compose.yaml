@@ -30,7 +30,7 @@ services:
       - SW_STORAGE=mysql
       - SW_DATA_SOURCE_USER=root
       - SW_DATA_SOURCE_PASSWORD=password
-      - SW_JDBC_URL=jdbc:mysql://mysql:3306/swtest
+      - SW_JDBC_URL=jdbc:mysql://mysql:3306/swtest?allowMultiQueries=true
       - SW_CORE_TOPN_REPORT_PERIOD=2
     depends_on:
       mysql:
@@ -148,7 +148,7 @@ services:
     depends_on:
       - mysql_3
   otel-collector:
-    image: otel/opentelemetry-collector:0.50.0
+    image: otel/opentelemetry-collector:${OTEL_COLLECTOR_VERSION}
     networks:
       - e2e
     command: [ "--config=/etc/otel-collector-config.yaml" ]

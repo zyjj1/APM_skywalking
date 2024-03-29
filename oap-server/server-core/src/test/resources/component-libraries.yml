@@ -471,6 +471,11 @@ AWSSQS:
 Micrometer:
   id: 141
   languages: Java
+  languages: Java
+mtls:
+  id: 142
+  languages: ebpf, mesh
+  priority: 12
 
 # .NET/.NET Core components
 # [3000, 4000) for C#/.NET only
@@ -652,6 +657,12 @@ AsyncPG:
   languages: Python
 AIORedis:
   id: 7017
+  languages: Python
+Websockets:
+  id: 7018
+  languages: Python
+HTTPX:
+  id: 7019
   languages: Python
 
 # PHP components

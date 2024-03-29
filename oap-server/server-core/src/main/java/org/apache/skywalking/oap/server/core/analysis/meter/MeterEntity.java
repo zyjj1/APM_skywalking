@@ -42,6 +42,7 @@ public class MeterEntity {
     private String instanceName;
     private Map<String, String> instanceProperties;
     private String endpointName;
+    private String processName;
     private String sourceServiceName;
     private String destServiceName;
     private String sourceProcessId;
@@ -64,6 +65,8 @@ public class MeterEntity {
                     IDManager.ServiceID.buildId(serviceName, true), instanceName);
             case ENDPOINT:
                 return IDManager.EndpointID.buildId(IDManager.ServiceID.buildId(serviceName, true), endpointName);
+            case PROCESS:
+                return IDManager.ProcessID.buildId(IDManager.ServiceInstanceID.buildId(IDManager.ServiceID.buildId(serviceName, true), instanceName), processName);
             case SERVICE_RELATION:
                 return IDManager.ServiceID.buildRelationId(new IDManager.ServiceID.ServiceRelationDefine(
                     sourceServiceId(),
@@ -139,15 +142,26 @@ public class MeterEntity {
         return meterEntity;
     }
 
+    public static MeterEntity newProcess(String serviceName, String instanceName, String processName, String layerName) {
+        final MeterEntity meterEntity = new MeterEntity();
+        meterEntity.scopeType = ScopeType.PROCESS;
+        meterEntity.serviceName = NAMING_CONTROL.formatServiceName(serviceName);
+        meterEntity.instanceName = NAMING_CONTROL.formatInstanceName(instanceName);
+        meterEntity.processName = processName;
+        meterEntity.layer = Layer.nameOf(layerName);
+        return meterEntity;
+    }
+
     public static MeterEntity newServiceRelation(String sourceServiceName,
                                                  String destServiceName,
-                                                 DetectPoint detectPoint, Layer layer) {
+                                                 DetectPoint detectPoint, Layer layer, int componentId) {
         final MeterEntity meterEntity = new MeterEntity();
         meterEntity.scopeType = ScopeType.SERVICE_RELATION;
         meterEntity.sourceServiceName = NAMING_CONTROL.formatServiceName(sourceServiceName);
         meterEntity.destServiceName = NAMING_CONTROL.formatServiceName(destServiceName);
         meterEntity.detectPoint = detectPoint;
         meterEntity.layer = layer;
+        meterEntity.componentId = componentId;
         return meterEntity;
     }
 

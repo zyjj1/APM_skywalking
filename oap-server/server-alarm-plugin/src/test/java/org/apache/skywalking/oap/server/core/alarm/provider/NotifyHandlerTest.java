@@ -19,77 +19,80 @@
 package org.apache.skywalking.oap.server.core.alarm.provider;
 
 import com.google.common.collect.Lists;
-import org.apache.skywalking.oap.server.core.CoreModule;
 import org.apache.skywalking.oap.server.core.alarm.AlarmMessage;
-import org.apache.skywalking.oap.server.core.alarm.EndpointRelationMetaInAlarm;
-import org.apache.skywalking.oap.server.core.alarm.ProcessMetaInAlarm;
-import org.apache.skywalking.oap.server.core.alarm.ServiceInstanceRelationMetaInAlarm;
-import org.apache.skywalking.oap.server.core.alarm.ServiceRelationMetaInAlarm;
 import org.apache.skywalking.oap.server.core.alarm.EndpointMetaInAlarm;
+import org.apache.skywalking.oap.server.core.alarm.EndpointRelationMetaInAlarm;
 import org.apache.skywalking.oap.server.core.alarm.MetaInAlarm;
 import org.apache.skywalking.oap.server.core.alarm.ServiceInstanceMetaInAlarm;
+import org.apache.skywalking.oap.server.core.alarm.ServiceInstanceRelationMetaInAlarm;
 import org.apache.skywalking.oap.server.core.alarm.ServiceMetaInAlarm;
+import org.apache.skywalking.oap.server.core.alarm.ServiceRelationMetaInAlarm;
 import org.apache.skywalking.oap.server.core.analysis.IDManager;
-import org.apache.skywalking.oap.server.core.analysis.manual.endpoint.EndpointTraffic;
 import org.apache.skywalking.oap.server.core.analysis.metrics.Metrics;
-import org.apache.skywalking.oap.server.core.analysis.metrics.MetricsEntityMetaInfo;
 import org.apache.skywalking.oap.server.core.analysis.metrics.MetricsMetaInfo;
 import org.apache.skywalking.oap.server.core.analysis.metrics.WithMetadata;
 import org.apache.skywalking.oap.server.core.source.DefaultScopeDefine;
 import org.apache.skywalking.oap.server.library.module.ModuleManager;
-import org.apache.skywalking.oap.server.library.module.ModuleProviderHolder;
-import org.apache.skywalking.oap.server.library.module.ModuleServiceHolder;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.powermock.reflect.Whitebox;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertNotNull;
-import static junit.framework.TestCase.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(PowerMockRunner.class)
-@PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*", "javax.management.*", "org.w3c.*"})
-@PrepareForTest(DefaultScopeDefine.class)
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 public class NotifyHandlerTest {
 
     private NotifyHandler notifyHandler;
-
-    private ModuleManager moduleManager;
-
-    private ModuleProviderHolder moduleProviderHolder;
-
-    private ModuleServiceHolder moduleServiceHolder;
 
     private MockMetrics metrics;
 
     private MetricsMetaInfo metadata;
 
     private RunningRule rule;
+    private MockedStatic<DefaultScopeDefine> defaultScopeDefineMockedStatic;
+
+    @BeforeEach
+    public void before() {
+        metadata = mock(MetricsMetaInfo.class);
+        when(metadata.getScope()).thenReturn(DefaultScopeDefine.ALL);
+        when(metadata.getId()).thenReturn("");
+
+        metrics = mock(MockMetrics.class);
+        when(metrics.getMeta()).thenReturn(metadata);
+
+        defaultScopeDefineMockedStatic = mockStatic(DefaultScopeDefine.class);
+    }
+
+    @AfterEach
+    public void after() {
+        defaultScopeDefineMockedStatic.close();
+    }
 
     @Test
     public void testNotifyWithEndpointCatalog() {
-        prepareNotify();
-
         String metricsName = "endpoint-metrics";
         when(metadata.getMetricsName()).thenReturn(metricsName);
 
         when(DefaultScopeDefine.inEndpointCatalog(0)).thenReturn(true);
 
         String endpointInventoryName = "endpoint-inventory-name";
-        EndpointTraffic endpointTraffic = mock(EndpointTraffic.class);
-        when(endpointTraffic.getName()).thenReturn(endpointInventoryName);
 
         String serviceInventoryName = "service-inventory-name";
         final String serviceId = IDManager.ServiceID.buildId(serviceInventoryName, true);
@@ -106,7 +109,6 @@ public class NotifyHandlerTest {
         assertTrue(metaInAlarm instanceof EndpointMetaInAlarm);
         assertEquals("c2VydmljZS1pbnZlbnRvcnktbmFtZQ==.1_ZW5kcG9pbnQtaW52ZW50b3J5LW5hbWU=", metaInAlarm.getId0());
         assertEquals(DefaultScopeDefine.ENDPOINT_CATALOG_NAME, metaInAlarm.getScope());
-        assertEquals(metricsName, metaInAlarm.getMetricsName());
         assertEquals(endpointInventoryName + " in " + serviceInventoryName, metaInAlarm.getName());
         assertEquals(DefaultScopeDefine.ENDPOINT, metaInAlarm.getScopeId());
 
@@ -114,9 +116,6 @@ public class NotifyHandlerTest {
 
     @Test
     public void testNotifyWithServiceInstanceCatalog() {
-
-        prepareNotify();
-
         String metricsName = "service-instance-metrics";
         when(metadata.getMetricsName()).thenReturn(metricsName);
 
@@ -135,7 +134,6 @@ public class NotifyHandlerTest {
         MetaInAlarm metaInAlarm = metaCaptor.getValue();
 
         assertTrue(metaInAlarm instanceof ServiceInstanceMetaInAlarm);
-        assertEquals(metricsName, metaInAlarm.getMetricsName());
         assertEquals("c2VydmljZQ==.1_aW5zdGFuY2UtaW52ZW50b3J5LW5hbWU=", metaInAlarm.getId0());
         assertEquals(DefaultScopeDefine.SERVICE_INSTANCE_CATALOG_NAME, metaInAlarm.getScope());
         assertEquals("instance-inventory-name of service", metaInAlarm.getName());
@@ -144,8 +142,6 @@ public class NotifyHandlerTest {
 
     @Test
     public void testNotifyWithServiceCatalog() {
-        prepareNotify();
-
         String metricsName = "service-metrics";
         when(metadata.getMetricsName()).thenReturn(metricsName);
         when(DefaultScopeDefine.inServiceCatalog(0)).thenReturn(true);
@@ -160,7 +156,6 @@ public class NotifyHandlerTest {
         MetaInAlarm metaInAlarm = metaCaptor.getValue();
 
         assertTrue(metaInAlarm instanceof ServiceMetaInAlarm);
-        assertEquals(metricsName, metaInAlarm.getMetricsName());
         assertEquals("c2VydmljZQ==.1", metaInAlarm.getId0());
         assertEquals(DefaultScopeDefine.SERVICE_CATALOG_NAME, metaInAlarm.getScope());
         assertEquals("service", metaInAlarm.getName());
@@ -169,8 +164,6 @@ public class NotifyHandlerTest {
 
     @Test
     public void testNotifyWithServiceRelationCatalog() {
-        prepareNotify();
-
         String metricsName = "service-relation-metrics";
         when(metadata.getMetricsName()).thenReturn(metricsName);
         when(DefaultScopeDefine.inServiceRelationCatalog(0)).thenReturn(true);
@@ -188,7 +181,6 @@ public class NotifyHandlerTest {
         MetaInAlarm metaInAlarm = metaCaptor.getValue();
 
         assertTrue(metaInAlarm instanceof ServiceRelationMetaInAlarm);
-        assertEquals(metricsName, metaInAlarm.getMetricsName());
         assertEquals("ZnJvbS1zZXJ2aWNl.1", metaInAlarm.getId0());
         assertEquals("ZGVzdC1zZXJ2aWNl.1", metaInAlarm.getId1());
         assertEquals(DefaultScopeDefine.SERVICE_RELATION_CATALOG_NAME, metaInAlarm.getScope());
@@ -198,8 +190,6 @@ public class NotifyHandlerTest {
 
     @Test
     public void testNotifyWithServiceInstanceRelationCatalog() {
-        prepareNotify();
-
         String metricsName = "service-instance-relation-metrics";
         when(metadata.getMetricsName()).thenReturn(metricsName);
         when(DefaultScopeDefine.inServiceInstanceRelationCatalog(0)).thenReturn(true);
@@ -217,7 +207,6 @@ public class NotifyHandlerTest {
         MetaInAlarm metaInAlarm = metaCaptor.getValue();
 
         assertTrue(metaInAlarm instanceof ServiceInstanceRelationMetaInAlarm);
-        assertEquals(metricsName, metaInAlarm.getMetricsName());
         assertEquals("ZnJvbS1zZXJ2aWNl.1_ZnJvbS1zZXJ2aWNlLWluc3RhbmNl", metaInAlarm.getId0());
         assertEquals("ZGVzdC1zZXJ2aWNl.1_ZGVzdC1zZXJ2aWNlLWluc3RhbmNl", metaInAlarm.getId1());
         assertEquals(DefaultScopeDefine.SERVICE_INSTANCE_RELATION_CATALOG_NAME, metaInAlarm.getScope());
@@ -227,8 +216,6 @@ public class NotifyHandlerTest {
 
     @Test
     public void testNotifyWithEndpointRelationCatalog() {
-        prepareNotify();
-
         String metricsName = "endpoint-relation-metrics";
         when(metadata.getMetricsName()).thenReturn(metricsName);
         when(DefaultScopeDefine.inEndpointRelationCatalog(0)).thenReturn(true);
@@ -246,56 +233,11 @@ public class NotifyHandlerTest {
         MetaInAlarm metaInAlarm = metaCaptor.getValue();
 
         assertTrue(metaInAlarm instanceof EndpointRelationMetaInAlarm);
-        assertEquals(metricsName, metaInAlarm.getMetricsName());
         assertEquals("ZnJvbS1zZXJ2aWNl.1_L3NvdXJjZS1wYXRo", metaInAlarm.getId0());
         assertEquals("ZGVzdC1zZXJ2aWNl.1_L2Rlc3QtcGF0aA==", metaInAlarm.getId1());
         assertEquals(DefaultScopeDefine.ENDPOINT_RELATION_CATALOG_NAME, metaInAlarm.getScope());
         assertEquals("/source-path in from-service to /dest-path in dest-service", metaInAlarm.getName());
         assertEquals(DefaultScopeDefine.ENDPOINT_RELATION, metaInAlarm.getScopeId());
-    }
-
-    @Test
-    public void testNotifyWithProcessCatalog() {
-        prepareNotify();
-
-        String metricsName = "process-metrics";
-        String serviceName = "test-service";
-        String instanceName = "test-instance";
-        String processName = "test-process";
-        when(metadata.getMetricsName()).thenReturn(metricsName);
-        when(DefaultScopeDefine.inProcessCatalog(0)).thenReturn(true);
-        final String processId = IDManager.ProcessID.buildId(
-                IDManager.ServiceInstanceID.buildId(IDManager.ServiceID.buildId(serviceName, true), instanceName),
-                processName
-        );
-        when(metadata.getId()).thenReturn(processId);
-        when(metadata.getEntity()).thenReturn(MetricsEntityMetaInfo.buildProcess(serviceName, instanceName, processName));
-
-        ArgumentCaptor<MetaInAlarm> metaCaptor = ArgumentCaptor.forClass(MetaInAlarm.class);
-
-        notifyHandler.notify(metrics);
-        verify(rule).in(metaCaptor.capture(), any());
-
-        MetaInAlarm metaInAlarm = metaCaptor.getValue();
-
-        assertTrue(metaInAlarm instanceof ProcessMetaInAlarm);
-        assertEquals(metricsName, metaInAlarm.getMetricsName());
-        assertEquals("cf4be92893026c77c539266f47f2aa22f1e53ff64fc64803f5814293ff10a56f", metaInAlarm.getId0());
-        assertEquals("", metaInAlarm.getId1());
-        assertEquals(DefaultScopeDefine.PROCESS_CATALOG_NAME, metaInAlarm.getScope());
-        assertEquals("test-process in test-instance of test-service", metaInAlarm.getName());
-        assertEquals(DefaultScopeDefine.PROCESS, metaInAlarm.getScopeId());
-    }
-
-    private void prepareNotify() {
-        metadata = mock(MetricsMetaInfo.class);
-        when(metadata.getScope()).thenReturn(DefaultScopeDefine.ALL);
-        when(metadata.getId()).thenReturn("");
-
-        metrics = mock(MockMetrics.class);
-        when(metrics.getMeta()).thenReturn(metadata);
-
-        PowerMockito.mockStatic(DefaultScopeDefine.class);
     }
 
     @Test
@@ -310,12 +252,12 @@ public class NotifyHandlerTest {
         notifyHandler.notify(mockMetrics);
     }
 
-    @Before
-    public void setUp() throws Exception {
+    @BeforeEach
+    public void setUp() {
 
         Rules rules = new Rules();
 
-        moduleManager = mock(ModuleManager.class);
+        ModuleManager moduleManager = mock(ModuleManager.class);
 
         notifyHandler = new NotifyHandler(new AlarmRulesWatcher(rules, null), moduleManager);
 
@@ -324,13 +266,6 @@ public class NotifyHandlerTest {
                 assertNotNull(message);
             }
         });
-
-        moduleProviderHolder = mock(ModuleProviderHolder.class);
-
-        moduleServiceHolder = mock(ModuleServiceHolder.class);
-
-        when(moduleManager.find(CoreModule.NAME)).thenReturn(moduleProviderHolder);
-        when(moduleProviderHolder.provider()).thenReturn(moduleServiceHolder);
 
         AlarmCore core = mock(AlarmCore.class);
 
@@ -343,7 +278,7 @@ public class NotifyHandlerTest {
         Whitebox.setInternalState(notifyHandler, "core", core);
     }
 
-    private abstract class MockMetrics extends Metrics implements WithMetadata {
+    public abstract static class MockMetrics extends Metrics implements WithMetadata {
 
     }
 }

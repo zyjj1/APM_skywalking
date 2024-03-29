@@ -19,24 +19,19 @@
 package org.apache.skywalking.oap.server.receiver.envoy.als.k8s;
 
 import com.google.common.collect.ImmutableMap;
-import io.kubernetes.client.openapi.models.V1ObjectMeta;
-import io.kubernetes.client.openapi.models.V1Pod;
-import io.kubernetes.client.openapi.models.V1Service;
-import java.util.Map;
+import io.fabric8.kubernetes.api.model.ObjectMeta;
+import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.Service;
 import lombok.RequiredArgsConstructor;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.Map;
 
 import static com.google.common.collect.ImmutableSortedMap.of;
-import static junit.framework.TestCase.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@RequiredArgsConstructor
-@RunWith(Parameterized.class)
 public class ServiceNameFormatterTest {
-    private final Case kase;
-
-    @Parameterized.Parameters
     public static Case[] parameters() {
         return new Case[] {
             new Case(
@@ -68,20 +63,26 @@ public class ServiceNameFormatterTest {
                 "${pod.metadata.labels.NOT_EXISTS,pod.metadata.labels.(service.istio.io/canonical-name),pod.metadata.labels.app}",
                 ImmutableMap.of("service", service("Clash"), "pod", pod(of("app", "ClashX-alpha"))),
                 "ClashX-alpha"
+            ),
+            new Case(
+                "${pod.metadata.labels.(service.istio.io/canonical-name),pod.metadata.labels.(app.kubernetes.io/name),pod.metadata.labels.app}",
+                ImmutableMap.of("service", service("Clash"), "pod", pod(of("app", "ClashX-alpha"))),
+                "ClashX-alpha"
             )
         };
     }
 
-    @Test
-    public void testFormatDefaultRule() throws Exception {
+    @ParameterizedTest
+    @MethodSource("parameters")
+    public void testFormatDefaultRule(final Case kase) throws Exception {
         assertEquals(new ServiceNameFormatter(kase.format).format(kase.context), kase.result);
     }
 
-    static V1Service service(final String name) {
-        return new V1Service() {
+    static Service service(final String name) {
+        return new Service() {
             @Override
-            public V1ObjectMeta getMetadata() {
-                return new V1ObjectMeta() {
+            public ObjectMeta getMetadata() {
+                return new ObjectMeta() {
                     @Override
                     public String getName() {
                         return name;
@@ -91,11 +92,11 @@ public class ServiceNameFormatterTest {
         };
     }
 
-    static V1Pod pod(ImmutableMap<String, String> lb) {
-        return new V1Pod() {
+    static Pod pod(ImmutableMap<String, String> lb) {
+        return new Pod() {
             @Override
-            public V1ObjectMeta getMetadata() {
-                return new V1ObjectMeta() {
+            public ObjectMeta getMetadata() {
+                return new ObjectMeta() {
                     @Override
                     public Map<String, String> getLabels() {
                         return lb;

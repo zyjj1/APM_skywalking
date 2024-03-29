@@ -1,19 +1,3 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 
 [
   {
@@ -45,15 +29,16 @@
                     "type": "Line",
                     "step": false,
                     "smooth": false,
-                    "showSymbol": false,
+                    "showSymbol": true,
                     "showXAxis": true,
                     "showYAxis": true
                   },
-                  "metrics": [
+                  "expressions": [
                     "eks_cluster_node_pod_number"
                   ],
-                  "metricTypes": [
-                    "readMetricsValues"
+                  "metricMode": "Expression",
+                  "typesOfMQE": [
+                    "TIME_SERIES_VALUES"
                   ],
                   "associate": [
                     {
@@ -102,15 +87,16 @@
                     "type": "Line",
                     "step": false,
                     "smooth": false,
-                    "showSymbol": false,
+                    "showSymbol": true,
                     "showXAxis": true,
                     "showYAxis": true
                   },
-                  "metrics": [
+                  "expressions": [
                     "eks_cluster_node_cpu_utilization"
                   ],
-                  "metricTypes": [
-                    "readMetricsValues"
+                  "metricMode": "Expression",
+                  "typesOfMQE": [
+                    "TIME_SERIES_VALUES"
                   ],
                   "associate": [
                     {
@@ -159,15 +145,16 @@
                     "type": "Line",
                     "step": false,
                     "smooth": false,
-                    "showSymbol": false,
+                    "showSymbol": true,
                     "showXAxis": true,
                     "showYAxis": true
                   },
-                  "metrics": [
+                  "expressions": [
                     "eks_cluster_node_memory_utilization"
                   ],
-                  "metricTypes": [
-                    "readMetricsValues"
+                  "metricMode": "Expression",
+                  "typesOfMQE": [
+                    "TIME_SERIES_VALUES"
                   ],
                   "associate": [
                     {
@@ -217,20 +204,16 @@
                     "type": "Line",
                     "step": false,
                     "smooth": false,
-                    "showSymbol": false,
+                    "showSymbol": true,
                     "showXAxis": true,
                     "showYAxis": true
                   },
-                  "metrics": [
-                    "eks_cluster_node_net_rx_bytes"
+                  "expressions": [
+                    "eks_cluster_node_net_rx_bytes/1024"
                   ],
-                  "metricTypes": [
-                    "readMetricsValues"
-                  ],
-                  "metricConfig": [
-                    {
-                      "calculation": "byteToKB"
-                    }
+                  "metricMode": "Expression",
+                  "typesOfMQE": [
+                    "TIME_SERIES_VALUES"
                   ],
                   "associate": [
                     {
@@ -279,15 +262,16 @@
                     "type": "Line",
                     "step": false,
                     "smooth": false,
-                    "showSymbol": false,
+                    "showSymbol": true,
                     "showXAxis": true,
                     "showYAxis": true
                   },
-                  "metrics": [
+                  "expressions": [
                     "eks_cluster_node_net_rx_error"
                   ],
-                  "metricTypes": [
-                    "readMetricsValues"
+                  "metricMode": "Expression",
+                  "typesOfMQE": [
+                    "TIME_SERIES_VALUES"
                   ],
                   "associate": [
                     {
@@ -336,20 +320,16 @@
                     "type": "Line",
                     "step": false,
                     "smooth": false,
-                    "showSymbol": false,
+                    "showSymbol": true,
                     "showXAxis": true,
                     "showYAxis": true
                   },
-                  "metrics": [
-                    "eks_cluster_node_net_tx_bytes"
+                  "expressions": [
+                    "eks_cluster_node_net_tx_bytes/1024"
                   ],
-                  "metricTypes": [
-                    "readMetricsValues"
-                  ],
-                  "metricConfig": [
-                    {
-                      "calculation": "byteToKB"
-                    }
+                  "metricMode": "Expression",
+                  "typesOfMQE": [
+                    "TIME_SERIES_VALUES"
                   ],
                   "associate": [
                     {
@@ -398,15 +378,16 @@
                     "type": "Line",
                     "step": false,
                     "smooth": false,
-                    "showSymbol": false,
+                    "showSymbol": true,
                     "showXAxis": true,
                     "showYAxis": true
                   },
-                  "metrics": [
+                  "expressions": [
                     "eks_cluster_node_net_tx_error"
                   ],
-                  "metricTypes": [
-                    "readMetricsValues"
+                  "metricMode": "Expression",
+                  "typesOfMQE": [
+                    "TIME_SERIES_VALUES"
                   ],
                   "associate": [
                     {
@@ -455,15 +436,16 @@
                     "type": "Line",
                     "step": false,
                     "smooth": false,
-                    "showSymbol": false,
+                    "showSymbol": true,
                     "showXAxis": true,
                     "showYAxis": true
                   },
-                  "metrics": [
+                  "expressions": [
                     "eks_cluster_node_disk_io_write"
                   ],
-                  "metricTypes": [
-                    "readLabeledMetricsValues"
+                  "metricMode": "Expression",
+                  "typesOfMQE": [
+                    "TIME_SERIES_VALUES"
                   ],
                   "associate": [
                     {
@@ -512,15 +494,16 @@
                     "type": "Line",
                     "step": false,
                     "smooth": false,
-                    "showSymbol": false,
+                    "showSymbol": true,
                     "showXAxis": true,
                     "showYAxis": true
                   },
-                  "metrics": [
+                  "expressions": [
                     "eks_cluster_node_disk_io_read"
                   ],
-                  "metricTypes": [
-                    "readLabeledMetricsValues"
+                  "metricMode": "Expression",
+                  "typesOfMQE": [
+                    "TIME_SERIES_VALUES"
                   ],
                   "associate": [
                     {
@@ -569,15 +552,16 @@
                     "type": "Line",
                     "step": false,
                     "smooth": false,
-                    "showSymbol": false,
+                    "showSymbol": true,
                     "showXAxis": true,
                     "showYAxis": true
                   },
-                  "metrics": [
+                  "expressions": [
                     "eks_cluster_node_fs_utilization"
                   ],
-                  "metricTypes": [
-                    "readLabeledMetricsValues"
+                  "metricMode": "Expression",
+                  "typesOfMQE": [
+                    "TIME_SERIES_VALUES"
                   ],
                   "associate": [
                     {
@@ -631,15 +615,16 @@
                     "type": "Line",
                     "step": false,
                     "smooth": false,
-                    "showSymbol": false,
+                    "showSymbol": true,
                     "showXAxis": true,
                     "showYAxis": true
                   },
-                  "metrics": [
+                  "expressions": [
                     "eks_cluster_node_pod_cpu_utilization"
                   ],
-                  "metricTypes": [
-                    "readLabeledMetricsValues"
+                  "metricMode": "Expression",
+                  "typesOfMQE": [
+                    "TIME_SERIES_VALUES"
                   ],
                   "associate": [
                     {
@@ -676,15 +661,16 @@
                     "type": "Line",
                     "step": false,
                     "smooth": false,
-                    "showSymbol": false,
+                    "showSymbol": true,
                     "showXAxis": true,
                     "showYAxis": true
                   },
-                  "metrics": [
+                  "expressions": [
                     "eks_cluster_node_pod_memory_utilization"
                   ],
-                  "metricTypes": [
-                    "readLabeledMetricsValues"
+                  "metricMode": "Expression",
+                  "typesOfMQE": [
+                    "TIME_SERIES_VALUES"
                   ],
                   "associate": [
                     {
@@ -721,20 +707,16 @@
                     "type": "Line",
                     "step": false,
                     "smooth": false,
-                    "showSymbol": false,
+                    "showSymbol": true,
                     "showXAxis": true,
                     "showYAxis": true
                   },
-                  "metrics": [
-                    "eks_cluster_node_pod_net_rx_bytes"
+                  "expressions": [
+                    "eks_cluster_node_pod_net_rx_bytes/1024"
                   ],
-                  "metricTypes": [
-                    "readLabeledMetricsValues"
-                  ],
-                  "metricConfig": [
-                    {
-                      "calculation": "byteToKB"
-                    }
+                  "metricMode": "Expression",
+                  "typesOfMQE": [
+                    "TIME_SERIES_VALUES"
                   ],
                   "associate": [
                     {
@@ -771,15 +753,16 @@
                     "type": "Line",
                     "step": false,
                     "smooth": false,
-                    "showSymbol": false,
+                    "showSymbol": true,
                     "showXAxis": true,
                     "showYAxis": true
                   },
-                  "metrics": [
+                  "expressions": [
                     "eks_cluster_node_pod_net_rx_error"
                   ],
-                  "metricTypes": [
-                    "readLabeledMetricsValues"
+                  "metricMode": "Expression",
+                  "typesOfMQE": [
+                    "TIME_SERIES_VALUES"
                   ],
                   "associate": [
                     {
@@ -816,20 +799,16 @@
                     "type": "Line",
                     "step": false,
                     "smooth": false,
-                    "showSymbol": false,
+                    "showSymbol": true,
                     "showXAxis": true,
                     "showYAxis": true
                   },
-                  "metrics": [
-                    "eks_cluster_node_pod_net_tx_bytes"
+                  "expressions": [
+                    "eks_cluster_node_pod_net_tx_bytes/1024"
                   ],
-                  "metricTypes": [
-                    "readLabeledMetricsValues"
-                  ],
-                  "metricConfig": [
-                    {
-                      "calculation": "byteToKB"
-                    }
+                  "metricMode": "Expression",
+                  "typesOfMQE": [
+                    "TIME_SERIES_VALUES"
                   ],
                   "associate": [
                     {
@@ -866,15 +845,16 @@
                     "type": "Line",
                     "step": false,
                     "smooth": false,
-                    "showSymbol": false,
+                    "showSymbol": true,
                     "showXAxis": true,
                     "showYAxis": true
                   },
-                  "metrics": [
+                  "expressions": [
                     "eks_cluster_node_pod_net_tx_error"
                   ],
-                  "metricTypes": [
-                    "readLabeledMetricsValues"
+                  "metricMode": "Expression",
+                  "typesOfMQE": [
+                    "TIME_SERIES_VALUES"
                   ],
                   "associate": [
                     {

@@ -28,18 +28,13 @@ import org.apache.skywalking.oap.server.core.analysis.metrics.Metrics;
 import org.apache.skywalking.oap.server.core.analysis.worker.MetricsStreamProcessor;
 import org.apache.skywalking.oap.server.core.remote.grpc.proto.RemoteData;
 import org.apache.skywalking.oap.server.core.source.DefaultScopeDefine;
-import org.apache.skywalking.oap.server.core.storage.ShardingAlgorithm;
 import org.apache.skywalking.oap.server.core.storage.StorageID;
 import org.apache.skywalking.oap.server.core.storage.annotation.BanyanDB;
 import org.apache.skywalking.oap.server.core.storage.annotation.Column;
 import org.apache.skywalking.oap.server.core.storage.annotation.ElasticSearch;
-import org.apache.skywalking.oap.server.core.storage.annotation.SQLDatabase;
 import org.apache.skywalking.oap.server.core.storage.type.Convert2Entity;
 import org.apache.skywalking.oap.server.core.storage.type.Convert2Storage;
 import org.apache.skywalking.oap.server.core.storage.type.StorageBuilder;
-
-import static org.apache.skywalking.oap.server.core.analysis.metrics.Metrics.ENTITY_ID;
-import static org.apache.skywalking.oap.server.core.analysis.metrics.Metrics.TIME_BUCKET;
 
 @Stream(name = ServiceRelationServerSideMetrics.INDEX_NAME, scopeId = DefaultScopeDefine.SERVICE_RELATION,
     builder = ServiceRelationServerSideMetrics.Builder.class, processor = MetricsStreamProcessor.class)
@@ -47,7 +42,6 @@ import static org.apache.skywalking.oap.server.core.analysis.metrics.Metrics.TIM
 @EqualsAndHashCode(of = {
     "entityId"
 }, callSuper = true)
-@SQLDatabase.Sharding(shardingAlgorithm = ShardingAlgorithm.TIME_BUCKET_SHARDING_ALGORITHM, tableShardingColumn = TIME_BUCKET, dataSourceShardingColumn = ENTITY_ID)
 public class ServiceRelationServerSideMetrics extends Metrics {
 
     public static final String INDEX_NAME = "service_relation_server_side";
@@ -57,21 +51,21 @@ public class ServiceRelationServerSideMetrics extends Metrics {
 
     @Setter
     @Getter
-    @Column(columnName = SOURCE_SERVICE_ID)
+    @Column(name = SOURCE_SERVICE_ID, length = 250)
     private String sourceServiceId;
     @Setter
     @Getter
-    @Column(columnName = DEST_SERVICE_ID)
+    @Column(name = DEST_SERVICE_ID, length = 250)
     private String destServiceId;
     @Setter
     @Getter
-    @Column(columnName = COMPONENT_IDS, storageOnly = true)
+    @Column(name = COMPONENT_IDS, storageOnly = true)
     @ElasticSearch.Keyword
     @BanyanDB.SeriesID(index = 1)
     private IntList componentIds = new IntList(3);
     @Setter
     @Getter
-    @Column(columnName = ENTITY_ID, length = 512)
+    @Column(name = ENTITY_ID, length = 512)
     @BanyanDB.SeriesID(index = 0)
     private String entityId;
 

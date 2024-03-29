@@ -4,10 +4,16 @@
       "pattern": "^http://localhost"
     },
     {
+      "pattern": "^http://pgp.mit.edu:11371"
+    },
+    {
       "pattern": "^https://github.com/apache/skywalking/blob/master/docs/en/changes/changes-x.y.z.md$"
     },
     {
       "pattern": "^https://dist.apache.org/repos/dist/dev/skywalking/x.y.z$"
+    },
+    {
+      "pattern": "^https://twitter.com*"
     }
   ],
   "timeout": "10s",

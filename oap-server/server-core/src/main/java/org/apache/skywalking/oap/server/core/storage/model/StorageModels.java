@@ -17,15 +17,8 @@
 
 package org.apache.skywalking.oap.server.core.storage.model;
 
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.skywalking.oap.server.core.analysis.record.Record;
 import org.apache.skywalking.oap.server.core.source.DefaultScopeDefine;
 import org.apache.skywalking.oap.server.core.storage.StorageException;
 import org.apache.skywalking.oap.server.core.storage.annotation.BanyanDB;
@@ -35,6 +28,14 @@ import org.apache.skywalking.oap.server.core.storage.annotation.SQLDatabase;
 import org.apache.skywalking.oap.server.core.storage.annotation.Storage;
 import org.apache.skywalking.oap.server.core.storage.annotation.SuperDataset;
 import org.apache.skywalking.oap.server.core.storage.annotation.ValueColumnMetadata;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * StorageModels manages all models detected by the core.
@@ -52,7 +53,7 @@ public class StorageModels implements IModelManager, ModelCreator, ModelManipula
     }
 
     @Override
-    public Model add(Class<?> aClass, int scopeId, Storage storage, boolean record) throws StorageException {
+    public Model add(Class<?> aClass, int scopeId, Storage storage) throws StorageException {
         // Check this scope id is valid.
         DefaultScopeDefine.nameOf(scopeId);
 
@@ -60,7 +61,8 @@ public class StorageModels implements IModelManager, ModelCreator, ModelManipula
         ShardingKeyChecker checker = new ShardingKeyChecker();
         SQLDatabaseModelExtension sqlDBModelExtension = new SQLDatabaseModelExtension();
         BanyanDBModelExtension banyanDBModelExtension = new BanyanDBModelExtension();
-        retrieval(aClass, storage.getModelName(), modelColumns, scopeId, checker, sqlDBModelExtension, record);
+        ElasticSearchModelExtension elasticSearchModelExtension = new ElasticSearchModelExtension();
+        retrieval(aClass, storage.getModelName(), modelColumns, scopeId, checker, sqlDBModelExtension, banyanDBModelExtension);
         // Add extra column for additional entities
         if (aClass.isAnnotationPresent(SQLDatabase.ExtraColumn4AdditionalEntity.class)
             || aClass.isAnnotationPresent(SQLDatabase.MultipleExtraColumn4AdditionalEntity.class)) {
@@ -97,6 +99,9 @@ public class StorageModels implements IModelManager, ModelCreator, ModelManipula
             banyanDBModelExtension.setStoreIDTag(true);
         }
 
+        // Set routing rules for ElasticSearch
+        elasticSearchModelExtension.setRouting(storage.getModelName(), modelColumns);
+
         checker.check(storage.getModelName());
 
         Model model = new Model(
@@ -104,12 +109,12 @@ public class StorageModels implements IModelManager, ModelCreator, ModelManipula
             modelColumns,
             scopeId,
             storage.getDownsampling(),
-            record,
             isSuperDatasetModel(aClass),
             aClass,
             storage.isTimeRelativeID(),
             sqlDBModelExtension,
-            banyanDBModelExtension
+            banyanDBModelExtension,
+            elasticSearchModelExtension
         );
 
         this.followColumnNameRules(model);
@@ -126,7 +131,7 @@ public class StorageModels implements IModelManager, ModelCreator, ModelManipula
     }
 
     /**
-     * CreatingListener listener could react when {@link #add(Class, int, Storage, boolean)} model happens. Also, the
+     * CreatingListener listener could react when {@link ModelCreator#add(Class, int, Storage)} model happens. Also, the
      * added models are being notified in this add operation.
      */
     @Override
@@ -146,7 +151,7 @@ public class StorageModels implements IModelManager, ModelCreator, ModelManipula
                            final int scopeId,
                            ShardingKeyChecker checker,
                            final SQLDatabaseModelExtension sqlDBModelExtension,
-                           boolean record) {
+                           final BanyanDBModelExtension banyanDBModelExtension) {
         if (log.isDebugEnabled()) {
             log.debug("Analysis {} to generate Model.", clazz.getName());
         }
@@ -156,7 +161,7 @@ public class StorageModels implements IModelManager, ModelCreator, ModelManipula
         for (Field field : fields) {
             if (field.isAnnotationPresent(Column.class)) {
                 if (field.isAnnotationPresent(SQLDatabase.AdditionalEntity.class)) {
-                    if (!record) {
+                    if (!Record.class.isAssignableFrom(clazz)) {
                         throw new IllegalStateException(
                             "Model [" + modelName + "] is not a Record, @SQLDatabase.AdditionalEntity only supports Record.");
                     }
@@ -169,19 +174,19 @@ public class StorageModels implements IModelManager, ModelCreator, ModelManipula
 
                 // SQL Database extension
                 SQLDatabaseExtension sqlDatabaseExtension = new SQLDatabaseExtension();
-                List<SQLDatabase.QueryUnifiedIndex> indexDefinitions = new ArrayList<>();
-                if (field.isAnnotationPresent(SQLDatabase.QueryUnifiedIndex.class)) {
-                    indexDefinitions.add(field.getAnnotation(SQLDatabase.QueryUnifiedIndex.class));
+                List<SQLDatabase.CompositeIndex> indexDefinitions = new ArrayList<>();
+                if (field.isAnnotationPresent(SQLDatabase.CompositeIndex.class)) {
+                    indexDefinitions.add(field.getAnnotation(SQLDatabase.CompositeIndex.class));
                 }
 
-                if (field.isAnnotationPresent(SQLDatabase.MultipleQueryUnifiedIndex.class)) {
+                if (field.isAnnotationPresent(SQLDatabase.CompositeIndices.class)) {
                     Collections.addAll(
-                        indexDefinitions, field.getAnnotation(SQLDatabase.MultipleQueryUnifiedIndex.class).value());
+                        indexDefinitions, field.getAnnotation(SQLDatabase.CompositeIndices.class).value());
                 }
 
                 indexDefinitions.forEach(indexDefinition -> {
                     sqlDatabaseExtension.appendIndex(new SQLDatabaseExtension.MultiColumnsIndex(
-                        column.columnName(),
+                        column.name(),
                         indexDefinition.withColumns()
                     ));
                 });
@@ -191,10 +196,12 @@ public class StorageModels implements IModelManager, ModelCreator, ModelManipula
                     ElasticSearch.MatchQuery.class);
                 final ElasticSearch.Column elasticSearchColumn = field.getAnnotation(ElasticSearch.Column.class);
                 final ElasticSearch.Keyword keywordColumn = field.getAnnotation(ElasticSearch.Keyword.class);
+                final ElasticSearch.Routing routingColumn = field.getAnnotation(ElasticSearch.Routing.class);
                 ElasticSearchExtension elasticSearchExtension = new ElasticSearchExtension(
                     elasticSearchAnalyzer == null ? null : elasticSearchAnalyzer.analyzer(),
-                    elasticSearchColumn == null ? null : elasticSearchColumn.columnAlias(),
-                    keywordColumn != null
+                    elasticSearchColumn == null ? null : elasticSearchColumn.legacyName(),
+                    keywordColumn != null,
+                    routingColumn != null
                 );
 
                 // BanyanDB extension
@@ -207,7 +214,9 @@ public class StorageModels implements IModelManager, ModelCreator, ModelManipula
                 final BanyanDB.IndexRule banyanDBIndexRule = field.getAnnotation(
                     BanyanDB.IndexRule.class);
                 final BanyanDB.MeasureField banyanDBMeasureField = field.getAnnotation(
-                        BanyanDB.MeasureField.class);
+                    BanyanDB.MeasureField.class);
+                final BanyanDB.TopNAggregation topNAggregation = field.getAnnotation(
+                    BanyanDB.TopNAggregation.class);
                 BanyanDBExtension banyanDBExtension = new BanyanDBExtension(
                     banyanDBSeriesID == null ? -1 : banyanDBSeriesID.index(),
                     banyanDBGlobalIndex != null,
@@ -216,11 +225,16 @@ public class StorageModels implements IModelManager, ModelCreator, ModelManipula
                     banyanDBMeasureField != null
                 );
 
+                if (topNAggregation != null) {
+                    BanyanDBModelExtension.TopN topN = new BanyanDBModelExtension.TopN();
+                    topN.setLruSize(topNAggregation.lruSize());
+                    topN.setCountersNumber(topNAggregation.countersNumber());
+                    topN.setGroupByTagNames(Collections.singletonList(column.name()));
+                    banyanDBModelExtension.setTopN(topN);
+                }
+
                 final ModelColumn modelColumn = new ModelColumn(
-                    new ColumnName(
-                        modelName,
-                        column.columnName()
-                    ),
+                    new ColumnName(column),
                     field.getType(),
                     field.getGenericType(),
                     column.storageOnly(),
@@ -236,41 +250,31 @@ public class StorageModels implements IModelManager, ModelCreator, ModelManipula
                 }
 
                 if (field.isAnnotationPresent(SQLDatabase.AdditionalEntity.class)) {
-                    String[] tableNames = field.getAnnotation(SQLDatabase.AdditionalEntity.class).additionalTables();
-                    for (final String tableName : tableNames) {
+                    final var additionalEntity = field.getAnnotation(SQLDatabase.AdditionalEntity.class);
+                    final var additionalTableNames = additionalEntity.additionalTables();
+                    for (final var tableName : additionalTableNames) {
                         sqlDBModelExtension.appendAdditionalTable(tableName, modelColumn);
                     }
-                    if (!field.getAnnotation(SQLDatabase.AdditionalEntity.class).reserveOriginalColumns()) {
+                    if (!additionalEntity.reserveOriginalColumns()) {
                         sqlDBModelExtension.appendExcludeColumns(modelColumn);
                     }
                 }
 
                 modelColumns.add(modelColumn);
                 if (log.isDebugEnabled()) {
-                    log.debug("The field named [{}] with the [{}] type", column.columnName(), field.getType());
+                    log.debug("The field named [{}] with the [{}] type", column.name(), field.getType());
                 }
                 if (column.dataType().isValue()) {
                     ValueColumnMetadata.INSTANCE.putIfAbsent(
-                        modelName, column.columnName(), column.dataType(), column.function(),
-                        column.defaultValue(), scopeId
+                        modelName, column.name(),
+                        column.dataType(), column.defaultValue(), scopeId
                     );
                 }
             }
         }
 
-        // For the annotation need to be declared on the superclass, the other annotation should be declared on the subclass.
-        if (!sqlDBModelExtension.getSharding().isPresent() && clazz.isAnnotationPresent(SQLDatabase.Sharding.class)) {
-            SQLDatabase.Sharding sharding = clazz.getAnnotation(SQLDatabase.Sharding.class);
-            sqlDBModelExtension.setSharding(
-                Optional.of(new SQLDatabaseModelExtension.Sharding(
-                    sharding.shardingAlgorithm(),
-                    sharding.dataSourceShardingColumn(),
-                    sharding.tableShardingColumn()
-                )));
-        }
-
         if (Objects.nonNull(clazz.getSuperclass())) {
-            retrieval(clazz.getSuperclass(), modelName, modelColumns, scopeId, checker, sqlDBModelExtension, record);
+            retrieval(clazz.getSuperclass(), modelName, modelColumns, scopeId, checker, sqlDBModelExtension, banyanDBModelExtension);
         }
     }
 
@@ -284,6 +288,7 @@ public class StorageModels implements IModelManager, ModelCreator, ModelManipula
     private void followColumnNameRules(Model model) {
         columnNameOverrideRule.forEach((oldName, newName) -> {
             model.getColumns().forEach(column -> {
+                log.debug("Override model column name: [{}] {} -> {}.", model.getName(), oldName, newName);
                 column.getColumnName().overrideName(oldName, newName);
                 column.getSqlDatabaseExtension()
                       .getIndices()
@@ -311,8 +316,8 @@ public class StorageModels implements IModelManager, ModelCreator, ModelManipula
         return models;
     }
 
-    private class ShardingKeyChecker {
-        private ArrayList<ModelColumn> keys = new ArrayList<>();
+    private static class ShardingKeyChecker {
+        private final ArrayList<ModelColumn> keys = new ArrayList<>();
 
         /**
          * @throws IllegalStateException if sharding key indices are conflicting.

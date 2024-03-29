@@ -13,9 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-- key: 2022-01-26 0259
-  value: 0
-- key: 2022-01-26 0300
-  value: 200
-- key: 2022-01-26 0301
-  value: 0
+type: TIME_SERIES_VALUES
+results:
+  - metric:
+      labels: []
+    values:
+      - id: "1643165940000"
+        value: null
+        traceid: null
+      - id: "1643166000000"
+        value: "200"
+        traceid: null
+      - id: "1643166060000"
+        value: null
+        traceid: null
+error: null

@@ -19,13 +19,8 @@
 package org.apache.skywalking.oap.server.storage.plugin.elasticsearch.base;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.google.common.base.Strings;
 import com.google.gson.Gson;
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.skywalking.library.elasticsearch.response.Index;
@@ -43,6 +38,13 @@ import org.apache.skywalking.oap.server.library.module.ModuleManager;
 import org.apache.skywalking.oap.server.library.util.CollectionUtils;
 import org.apache.skywalking.oap.server.library.util.StringUtil;
 import org.apache.skywalking.oap.server.storage.plugin.elasticsearch.StorageModuleElasticsearchConfig;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 public class StorageEsInstaller extends ModelInstaller {
@@ -89,12 +91,14 @@ public class StorageEsInstaller extends ModelInstaller {
                 Optional<Index> index = esClient.getIndex(tableName);
                 Mappings historyMapping = index.map(Index::getMappings).orElseGet(Mappings::new);
                 structures.putStructure(tableName, historyMapping, index.map(Index::getSettings).orElseGet(HashMap::new));
-                boolean containsMapping = structures.containsMapping(tableName, createMapping(model));
-                // Do not check index settings in the "no-init mode",
-                // because the no-init mode OAP server doesn't take responsibility for index settings.
                 if (RunningMode.isNoInitMode()) {
-                    exist = containsMapping;
+                    // Do not check index settings and field types in the "no-init mode",
+                    // because the no-init mode OAP server doesn't take responsibility for index settings
+                    // or updating field types, it just cares about whether the data can be ingested without
+                    // reporting errors.
+                    exist = structures.containsFieldNames(tableName, createMapping(model));
                 } else {
+                    boolean containsMapping = structures.containsMapping(tableName, createMapping(model));
                     exist = containsMapping && structures.compareIndexSetting(tableName, createSetting(model));
                 }
             }
@@ -104,7 +108,7 @@ public class StorageEsInstaller extends ModelInstaller {
         boolean templateExists = esClient.isExistsTemplate(tableName);
         final Optional<IndexTemplate> template = esClient.getTemplate(tableName);
 
-        if ((templateExists && !template.isPresent()) || (!templateExists && template.isPresent())) {
+        if ((templateExists && template.isEmpty()) || (!templateExists && template.isPresent())) {
             throw new Error("[Bug warning] ElasticSearch client query template result is not consistent. " +
                                 "Please file an issue to Apache SkyWalking.(https://github.com/apache/skywalking/issues)");
         }
@@ -115,12 +119,12 @@ public class StorageEsInstaller extends ModelInstaller {
             structures.putStructure(
                 tableName, template.get().getMappings(), template.get().getSettings()
             );
-            boolean containsMapping = structures.containsMapping(tableName, createMapping(model));
             // Do not check index settings in the "no-init mode",
             // because the no-init mode OAP server doesn't take responsibility for index settings.
             if (RunningMode.isNoInitMode()) {
-                exist = containsMapping;
+                exist = structures.containsFieldNames(tableName, createMapping(model));
             } else {
+                boolean containsMapping = structures.containsMapping(tableName, createMapping(model));
                 exist = containsMapping && structures.compareIndexSetting(tableName, createSetting(model));
             }
         }
@@ -251,7 +255,7 @@ public class StorageEsInstaller extends ModelInstaller {
         if (!CollectionUtils.isEmpty(specificSettings)) {
             indexSettings.putAll(specificSettings);
         }
-        
+
         return setting;
     }
 
@@ -262,9 +266,11 @@ public class StorageEsInstaller extends ModelInstaller {
     //When adding a new model(with an analyzer) into an existed index by update will be failed, if the index is without analyzer settings.
     //To avoid this, add the analyzer settings to the template before index creation.
     private Map getAnalyzerSetting(Model model) throws StorageException {
-        if (config.isLogicSharding() || !model.isTimeSeries()) {
+        if (!model.isTimeSeries()) {
+            return getAnalyzerSetting4MergedIndex(model);
+        } else if (config.isLogicSharding()) {
             return getAnalyzerSettingByColumn(model);
-        } else if (IndexController.INSTANCE.isRecordModel(model) && model.isSuperDataset()) {
+        } else if (model.isRecord() && model.isSuperDataset()) {
             //SuperDataset doesn't merge index, the analyzer follow the column config.
             return getAnalyzerSettingByColumn(model);
         } else {
@@ -302,11 +308,13 @@ public class StorageEsInstaller extends ModelInstaller {
         Map<String, Object> properties = new HashMap<>();
         Mappings.Source source = new Mappings.Source();
         for (ModelColumn columnDefine : model.getColumns()) {
-            final String type = columnTypeEsMapping.transform(columnDefine.getType(), columnDefine.getGenericType(), columnDefine.getElasticSearchExtension());
+            final String type = columnTypeEsMapping.transform(columnDefine.getType(), columnDefine.getGenericType(),
+                columnDefine.getLength(), columnDefine.isStorageOnly(),
+                columnDefine.getElasticSearchExtension());
             String columnName = columnDefine.getColumnName().getName();
-            String alias = columnDefine.getElasticSearchExtension().getColumnAlias();
-            if (!config.isLogicSharding() && alias != null) {
-                columnName = alias;
+            String legacyName = columnDefine.getElasticSearchExtension().getLegacyColumnName();
+            if (config.isLogicSharding() && !Strings.isNullOrEmpty(legacyName)) {
+                columnName = legacyName;
             }
             if (columnDefine.getElasticSearchExtension().needMatchQuery()) {
                 String matchCName = MatchCNameBuilder.INSTANCE.build(columnName);
@@ -335,13 +343,19 @@ public class StorageEsInstaller extends ModelInstaller {
             }
         }
 
-        if ((IndexController.INSTANCE.isMetricModel(model) && !config.isLogicSharding())
+        if (!model.isTimeSeries()) {
+            Map<String, Object> column = new HashMap<>();
+            column.put("type", "keyword");
+            properties.put(IndexController.LogicIndicesRegister.MANAGEMENT_TABLE_NAME, column);
+        }
+
+        if ((model.isMetric() && !config.isLogicSharding())
             || (config.isLogicSharding() && IndexController.INSTANCE.isFunctionMetric(model))) {
             Map<String, Object> column = new HashMap<>();
             column.put("type", "keyword");
             properties.put(IndexController.LogicIndicesRegister.METRIC_TABLE_NAME, column);
         }
-        if (!config.isLogicSharding() && IndexController.INSTANCE.isRecordModel(model) && !model.isSuperDataset()) {
+        if (!config.isLogicSharding() && model.isRecord() && !model.isSuperDataset()) {
             Map<String, Object> column = new HashMap<>();
             column.put("type", "keyword");
             properties.put(IndexController.LogicIndicesRegister.RECORD_TABLE_NAME, column);

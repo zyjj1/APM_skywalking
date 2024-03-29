@@ -20,38 +20,18 @@ package org.apache.skywalking.oap.meter.analyzer.dsl;
 
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.Arrays;
 import java.util.Collection;
 
 import static com.google.common.collect.ImmutableMap.of;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.fail;
 
 @Slf4j
-@RunWith(Parameterized.class)
 public class AggregationTest {
-
-    @Parameterized.Parameter
-    public String name;
-
-    @Parameterized.Parameter(1)
-    public ImmutableMap<String, SampleFamily> input;
-
-    @Parameterized.Parameter(2)
-    public String expression;
-
-    @Parameterized.Parameter(3)
-    public Result want;
-
-    @Parameterized.Parameter(4)
-    public boolean isThrow;
-
-    @Parameterized.Parameters(name = "{index}: {0}")
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][] {
             {
@@ -167,12 +147,62 @@ public class AggregationTest {
                 ).build()),
                 false,
             },
+
+            {
+                "count",
+                of("http_success_request", SampleFamilyBuilder.newBuilder(
+                        Sample.builder().labels(of("idc", "t3")).value(100).name("http_success_request").build(),
+                        Sample.builder().labels(of("idc", "t1")).value(50).name("http_success_request").build(),
+                        Sample.builder().labels(of("idc", "t2")).value(3).name("http_success_request").build()
+                ).build()),
+                "http_success_request.count()",
+                Result.success(SampleFamilyBuilder.newBuilder(Sample.builder().labels(ImmutableMap.of()).value(3).name("http_success_request").build()).build()),
+                false,
+            },
+            {
+                "count-by-one",
+                of("http_success_request", SampleFamilyBuilder.newBuilder(
+                        Sample.builder().labels(of("idc", "t1")).value(50).name("http_success_request").build(),
+                        Sample.builder().labels(of("idc", "t1", "region", "cn", "instance", "10.0.0.1")).value(50).name("http_success_request").build(),
+                        Sample.builder().labels(of("idc", "t2", "region", "us", "instance", "10.0.0.2")).value(50).name("http_success_request").build(),
+                        Sample.builder().labels(of("idc", "t1", "region", "us", "instance", "10.0.0.3")).value(100).name("http_success_request").build(),
+                        Sample.builder().labels(of("idc", "t2", "region", "cn", "instance", "10.0.0.3")).value(3).name("http_success_request").build()
+                ).build()),
+                "http_success_request.count(by = ['instance'])",
+                Result.success(SampleFamilyBuilder.newBuilder(
+                        Sample.builder().labels(ImmutableMap.of()).value(3).name("http_success_request").build()
+                ).build()),
+                false,
+            },
+            {
+                "count-by-multi",
+                of("http_success_request", SampleFamilyBuilder.newBuilder(
+                        Sample.builder().labels(of("idc", "t1")).value(50).name("http_success_request").build(),
+                        Sample.builder().labels(of("idc", "t1", "region", "cn", "instance", "10.0.0.1")).value(50).name("http_success_request").build(),
+                        Sample.builder().labels(of("idc", "t1", "region", "cn", "instance", "10.0.0.1")).value(50).name("http_success_request").build(),
+                        Sample.builder().labels(of("idc", "t2", "region", "us", "instance", "10.0.0.2")).value(50).name("http_success_request").build(),
+                        Sample.builder().labels(of("idc", "t1", "region", "us", "instance", "10.0.0.3")).value(100).name("http_success_request").build(),
+                        Sample.builder().labels(of("idc", "t1", "region", "us", "instance", "10.0.0.4")).value(100).name("http_success_request").build(),
+                        Sample.builder().labels(of("idc", "t2", "region", "cn", "instance", "10.0.0.5")).value(3).name("http_success_request").build()
+                ).build()),
+                "http_success_request.count(by = ['region','instance'])",
+                Result.success(SampleFamilyBuilder.newBuilder(
+                        Sample.builder().labels(of("region", "us")).value(3).name("http_success_request").build(),
+                        Sample.builder().labels(of("region", "cn")).value(2).name("http_success_request").build()
+                ).build()),
+                false,
+            },
         });
     }
 
-    @Test
-    public void test() {
-        Expression e = DSL.parse(expression);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("data")
+    public void test(String name,
+                     ImmutableMap<String, SampleFamily> input,
+                     String expression,
+                     Result want,
+                     boolean isThrow) {
+        Expression e = DSL.parse(name, expression);
         Result r = null;
         try {
             r = e.run(input);
@@ -186,6 +216,6 @@ public class AggregationTest {
         if (isThrow) {
             fail("Should throw something");
         }
-        assertThat(r, is(want));
+        assertThat(r).isEqualTo(want);
     }
 }
